@@ -1,0 +1,6 @@
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  createdAt DateTime @default(now())
+}
