@@ -26,27 +26,47 @@ const getRefreshToken = (payload: JwtPayload) => {
 }
 
 
+const accessTokenCookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none" as const,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 1000,
+};
+
+const refreshTokenCookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none" as const,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 1000 * 7,
+};
+
 const setAccessTokenCookie = (res: Response, token: string) => {
-    CookieUtils.setCookie(res, 'accessToken', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: '/',
-        //1 day
-        maxAge: 60 * 60 * 24 * 1000,
-    });
-}
+    CookieUtils.setCookie(res, "accessToken", token, accessTokenCookieOptions);
+};
 
 const setRefreshTokenCookie = (res: Response, token: string) => {
-    CookieUtils.setCookie(res, 'refreshToken', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: '/',
-        //7d
-        maxAge: 60 * 60 * 24 * 1000 * 7,
+    CookieUtils.setCookie(res, "refreshToken", token, refreshTokenCookieOptions);
+};
+
+const clearAccessTokenCookie = (res: Response) => {
+    CookieUtils.clearCookie(res, "accessToken", {
+        httpOnly: accessTokenCookieOptions.httpOnly,
+        secure: accessTokenCookieOptions.secure,
+        sameSite: accessTokenCookieOptions.sameSite,
+        path: accessTokenCookieOptions.path,
     });
-}
+};
+
+const clearRefreshTokenCookie = (res: Response) => {
+    CookieUtils.clearCookie(res, "refreshToken", {
+        httpOnly: refreshTokenCookieOptions.httpOnly,
+        secure: refreshTokenCookieOptions.secure,
+        sameSite: refreshTokenCookieOptions.sameSite,
+        path: refreshTokenCookieOptions.path,
+    });
+};
 
 const setBetterAuthSessionCookie = (res: Response, token: string) => {
     CookieUtils.setCookie(res, "better-auth.session_token", token, {
@@ -77,6 +97,8 @@ export const tokenUtils = {
     getRefreshToken,
     setAccessTokenCookie,
     setRefreshTokenCookie,
+    clearAccessTokenCookie,
+    clearRefreshTokenCookie,
     setBetterAuthSessionCookie,
     clearBetterAuthSessionCookie,
-}
+};

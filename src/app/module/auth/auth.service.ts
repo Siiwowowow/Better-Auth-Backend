@@ -11,6 +11,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { envVars } from "../../config/env";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { randomBytes } from "node:crypto";
+import {  userStatus } from "../../../generated/prisma/enums";
 
 /** Must match `session.expiresIn` in lib/auth.ts (seconds) → ms for Date */
 const SESSION_DURATION_MS = 60 * 60 * 24 * 1000;
@@ -46,6 +47,41 @@ const registerUSer = async (payload: IRegisterUserPayload) => {
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
+  });
+
+  // Parse token expiration from JWT payload
+  const decodedAccessToken: any = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+  const decodedRefreshToken: any = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+  const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
+    ? new Date(decodedAccessToken.data.exp * 1000) 
+    : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
+    ? new Date(decodedRefreshToken.data.exp * 1000) 
+    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  // Save or update Account record with tokens
+  await prisma.account.upsert({
+    where: {
+      id: `account_${data.user.id}_credential`,
+    },
+    create: {
+      id: `account_${data.user.id}_credential`,
+      accountId: "credential",
+      providerId: "credential",
+      userId: data.user.id,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
+    update: {
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
   });
 
   return {
@@ -87,6 +123,41 @@ const loginUser = async (payload: ILoginUserPayload) => {
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
+  });
+
+  // Parse token expiration from JWT payload
+  const decodedAccessToken: any = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+  const decodedRefreshToken: any = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+  const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
+    ? new Date(decodedAccessToken.data.exp * 1000) 
+    : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
+    ? new Date(decodedRefreshToken.data.exp * 1000) 
+    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  // Update Account record with new tokens
+  await prisma.account.upsert({
+    where: {
+      id: `account_${data.user.id}_credential`,
+    },
+    create: {
+      id: `account_${data.user.id}_credential`,
+      accountId: "credential",
+      providerId: "credential",
+      userId: data.user.id,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
+    update: {
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
   });
 
   return {
@@ -168,6 +239,41 @@ const getNewToken = async (refreshToken : string, sessionToken : string) => {
             token: sessionToken,
             expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
             updatedAt: new Date(),
+        },
+    });
+
+    // Parse token expiration from JWT payload and save to Account
+    const decodedAccessToken: any = jwtUtils.verifyToken(newAccessToken, envVars.ACCESS_TOKEN_SECRET);
+    const decodedRefreshToken: any = jwtUtils.verifyToken(newRefreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+    const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
+        ? new Date(decodedAccessToken.data.exp * 1000) 
+        : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
+        ? new Date(decodedRefreshToken.data.exp * 1000) 
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Update Account with new tokens
+    await prisma.account.upsert({
+        where: {
+            id: `account_${data.userId}_credential`,
+        },
+        create: {
+            id: `account_${data.userId}_credential`,
+            accountId: "credential",
+            providerId: "credential",
+            userId: data.userId,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            accessTokenExpiresAt: accessTokenExpiresAt,
+            refreshTokenExpiresAt: refreshTokenExpiresAt,
+        },
+        update: {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+            accessTokenExpiresAt: accessTokenExpiresAt,
+            refreshTokenExpiresAt: refreshTokenExpiresAt,
         },
     });
 
@@ -292,6 +398,29 @@ const changePassword = async (
             emailVerified: user.emailVerified,
         });
 
+        // Parse token expiration from JWT payload and save to Account
+        const decodedAccessToken: any = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+        const decodedRefreshToken: any = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+        const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
+            ? new Date(decodedAccessToken.data.exp * 1000) 
+            : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
+            ? new Date(decodedRefreshToken.data.exp * 1000) 
+            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        // Update Account with new tokens
+        await prisma.account.update({
+            where: { id: account.id },
+            data: {
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                accessTokenExpiresAt: accessTokenExpiresAt,
+                refreshTokenExpiresAt: refreshTokenExpiresAt,
+            },
+        });
+
         return {
             accessToken,
             refreshToken,
@@ -308,10 +437,224 @@ const changePassword = async (
         throw new AppError(status.BAD_REQUEST, "Failed to change password");
     }
 };
+
+const logoutUser = async (sessionToken: string | undefined) => {
+  let serverSessionRemoved = false;
+  if (sessionToken) {
+    const deleted = await prisma.session.deleteMany({
+      where: { token: sessionToken },
+    });
+    serverSessionRemoved = deleted.count > 0;
+  }
+
+  return {
+    loggedOut: true,
+    serverSessionRemoved,
+    cookiesCleared: [
+      "accessToken",
+      "refreshToken",
+      "better-auth.session_token",
+    ] as const,
+  };
+};
+
+const verifyEmail = async (email: string, otp: string) => {
+  const result = await auth.api.verifyEmailOTP({
+    body: {
+      email,
+      otp,
+    },
+  });
+
+  if (result.status && !result.user.emailVerified) {
+    await prisma.user.update({
+      where: {
+        email,
+      },
+      data: {
+        emailVerified: true,
+        status: userStatus.ACTIVE, // ✅ Activate user after email verification
+      },
+    });
+  }
+
+  // Generate tokens after email verification
+  const user = result.user;
+  
+  const accessToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+    status: userStatus.ACTIVE, // ✅ Use ACTIVE status in token
+    isDeleted: user.isDeleted,
+    emailVerified: user.emailVerified,
+  });
+
+  const refreshToken = tokenUtils.getRefreshToken({
+    userId: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+    status: userStatus.ACTIVE, // ✅ Use ACTIVE status in token
+    isDeleted: user.isDeleted,
+    emailVerified: user.emailVerified,
+  });
+
+  // Parse token expiration from JWT payload
+  const decodedAccessToken: any = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+  const decodedRefreshToken: any = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
+
+  const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
+    ? new Date(decodedAccessToken.data.exp * 1000) 
+    : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
+    ? new Date(decodedRefreshToken.data.exp * 1000) 
+    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  // Save or update Account record with tokens
+  await prisma.account.upsert({
+    where: {
+      id: `account_${user.id}_credential`,
+    },
+    create: {
+      id: `account_${user.id}_credential`,
+      accountId: "credential",
+      providerId: "credential",
+      userId: user.id,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
+    update: {
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessTokenExpiresAt: accessTokenExpiresAt,
+      refreshTokenExpiresAt: refreshTokenExpiresAt,
+    },
+  });
+
+  return {
+    emailVerified: true,
+    email: result.user.email,
+    accessToken,
+    refreshToken,
+  };
+};
+const forgetPassword = async (email : string) => {
+  const isUserExist = await prisma.user.findUnique({
+      where : {
+          email,
+      }
+  })
+
+  if(!isUserExist){
+      throw new AppError(status.NOT_FOUND, "User not found");
+  }
+
+  if(!isUserExist.emailVerified){
+      throw new AppError(status.BAD_REQUEST, "Email not verified");
+  }
+
+  if(isUserExist.isDeleted || isUserExist.status === userStatus.DELETED || isUserExist.status === userStatus.BLOCKED){
+      throw new AppError(status.NOT_FOUND, "User not found"); 
+  }
+
+  await auth.api.requestPasswordResetEmailOTP({
+      body:{
+          email,
+      }
+  })
+}
+const resetPassword = async (email : string, otp : string, newPassword : string) => {
+  const isUserExist = await prisma.user.findUnique({
+      where: {
+          email,
+      }
+  })
+
+  if (!isUserExist) {
+      throw new AppError(status.NOT_FOUND, "User not found");
+  }
+
+  if (!isUserExist.emailVerified) {
+      throw new AppError(status.BAD_REQUEST, "Email not verified");
+  }
+
+  if (isUserExist.isDeleted || isUserExist.status === userStatus.DELETED) {
+      throw new AppError(status.NOT_FOUND, "User not found");
+  }
+
+  await auth.api.resetPasswordEmailOTP({
+      body:{
+          email,
+          otp,
+          password : newPassword,
+      }
+  })
+
+  if (isUserExist.needPasswordChange) {
+      await prisma.user.update({
+          where: {
+              id: isUserExist.id,
+          },
+          data: {
+              needPasswordChange: false,
+          }
+      })
+  }
+
+  await prisma.session.deleteMany({
+      where:{
+          userId : isUserExist.id,
+      }
+  })
+}
+const googleLoginSuccess = async (session: Record<string, any>) => {
+
+    const user = await prisma.user.upsert({
+      where: { id: session.user.id },
+      update: {
+        name: session.user.name,
+        email: session.user.email,
+      },
+      create: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+      },
+    });
+  
+    const accessToken = tokenUtils.getAccessToken({
+      userId: user.id,
+      role: user.role,
+      name: user.name,
+    });
+  
+    const refreshToken = tokenUtils.getRefreshToken({
+      userId: user.id,
+      role: user.role,
+      name: user.name,
+    });
+  
+    return {
+      accessToken,
+      refreshToken,
+    };
+  };
+
+
 export const AuthService = {
   registerUSer,
   loginUser,
   getMe,
   getNewToken,
   changePassword,
+  logoutUser,
+  verifyEmail,
+  forgetPassword,
+  resetPassword,
+  googleLoginSuccess,
 };

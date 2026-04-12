@@ -4,6 +4,8 @@ import cors from "cors";
 import { IndexRoutes } from "./app/routes";
 import { notFound } from "./app/middleware/notFound";
 import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./app/lib/auth";
 
 const app: Application = express();
 
@@ -14,7 +16,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use("/api/auth", toNodeHandler(auth));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());

@@ -4,6 +4,7 @@ enum Role{
     USER
 }
 enum userStatus{
+    PENDING_VERIFICATION
     BLOCKED
     DELETED
     ACTIVE
