@@ -1,3 +1,4 @@
+//src/app/module/auth/auth.interface.ts
 export interface IRegisterUserPayload {
   name: string;
   email: string;

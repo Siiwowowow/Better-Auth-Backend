@@ -1,3 +1,4 @@
+// backend/src/app.ts (updated CORS)
 import cookieParser from "cookie-parser";
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
@@ -9,22 +10,28 @@ import { auth } from "./app/lib/auth";
 
 const app: Application = express();
 
-// 🔥 CORS MUST BE FIRST
+// 🔥 CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
-app.use("/api/auth", toNodeHandler(auth));
-app.use(express.urlencoded({ extended: true }));
+
+// Body parsing
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// routes
+// Better Auth handler
+app.use("/api/auth", toNodeHandler(auth));
+
+// API routes
 app.use("/api/v1", IndexRoutes);
 
-// test
+// Test route
 app.get("/", (req: Request, res: Response) => {
   res.json({
     success: true,
@@ -32,6 +39,7 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
+// Error handlers
 app.use(globalErrorHandler);
 app.use(notFound);
 

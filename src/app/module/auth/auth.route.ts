@@ -1,3 +1,4 @@
+//src/app/module/auth/auth.route.ts
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
 import { checkAuth } from "../../middleware/checkAuth";
