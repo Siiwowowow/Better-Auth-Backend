@@ -71,25 +71,27 @@ export const checkAuth =
       // =========================
       // 🔥 USER STATUS CHECK
       // =========================
+      const isMeRoute = req.originalUrl.endsWith("/me");
+
       if (
-        user.status === userStatus.PENDING_VERIFICATION ||
         user.status === userStatus.BLOCKED ||
         user.status === userStatus.DELETED ||
         user.isDeleted
       ) {
-        if (user.status === userStatus.PENDING_VERIFICATION) {
-          throw new AppError(
-            status.FORBIDDEN,
-            "Account pending verification. Please verify your email to continue"
-          );
-        }
         throw new AppError(status.UNAUTHORIZED, "User is not active");
+      }
+
+      if (!isMeRoute && user.status === userStatus.PENDING_VERIFICATION) {
+        throw new AppError(
+          status.FORBIDDEN,
+          "Account pending verification. Please verify your email to continue"
+        );
       }
 
       // =========================
       // 🔥 EMAIL VERIFICATION CHECK
       // =========================
-      if (!user.emailVerified) {
+      if (!isMeRoute && !user.emailVerified) {
         throw new AppError(status.FORBIDDEN, "Email verification required. Please verify your email to access this resource");
       }
 

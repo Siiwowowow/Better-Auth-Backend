@@ -150,23 +150,18 @@ const logoutUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const verifyEmail = catchAsync(async (req: Request, res: Response) => {
-  const { email, otp } = req.body;
-  const data = await AuthService.verifyEmail(email, otp);
+const verifyEmail = catchAsync(
+    async (req: Request, res: Response) => {
+        const { email, otp } = req.body;
+        await AuthService.verifyEmail(email, otp);
 
-  // Set new tokens from verification
-  if (data.accessToken && data.refreshToken) {
-    tokenUtils.setAccessTokenCookie(res, data.accessToken);
-    tokenUtils.setRefreshTokenCookie(res, data.refreshToken);
-  }
-
-  sendResponse(res, {
-    httpCode: status.OK,
-    success: true,
-    message: "Email verified successfully",
-    data,
-  });
-});
+        sendResponse(res, {
+            httpCode: status.OK,
+            success: true,
+            message: "Email verified successfully",
+        });
+    }
+)
 const forgetPassword = catchAsync(
   async (req: Request, res: Response) => {
       const { email } = req.body;
