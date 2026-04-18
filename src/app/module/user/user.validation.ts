@@ -12,22 +12,7 @@ const updateUserProfileZodSchema = z.object({
     .email("Invalid email format")
     .optional(),
     
-  phone: z.string()
-    .regex(/^\+?[0-9]{10,15}$/, "Phone number must be 10-15 digits, optionally starting with +")
-    .optional(),
-    
-  address: z.string()
-    .max(200, "Address too long")
-    .optional(),
-    
-  city: z.string()
-    .max(100, "City name too long")
-    .optional(),
-    
-  country: z.string()
-    .max(100, "Country name too long")
-    .optional(),
-    
+
   image: z.string().url().optional(), // Will be set by middleware
 });
 

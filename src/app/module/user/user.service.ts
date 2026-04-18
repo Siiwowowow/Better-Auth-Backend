@@ -21,10 +21,6 @@ const updateMyProfile = async (
   // Add fields only if they are provided
   if (payload.name !== undefined) updateData.name = payload.name;
   if (payload.email !== undefined) updateData.email = payload.email;
-  if (payload.phone !== undefined) updateData.phone = payload.phone;
-  if (payload.address !== undefined) updateData.address = payload.address;
-  if (payload.city !== undefined) updateData.city = payload.city;
-  if (payload.country !== undefined) updateData.country = payload.country;
 
   // Handle image update
   if (payload.image) {
@@ -53,10 +49,6 @@ const updateMyProfile = async (
       image: true,
       role: true,
       status: true,
-      phone: true,
-      address: true,
-      city: true,
-      country: true,
       createdAt: true,
       updatedAt: true,
     },

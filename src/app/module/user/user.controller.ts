@@ -31,20 +31,25 @@ const removeProfilePhoto = catchAsync(async (req: Request, res: Response) => {
   });
 
   if (existingUser.image) {
-    // Delete from Cloudinary
-    await deleteFileFromCloudinary(existingUser.image);
-    
-    // Update database to remove image
-    await prisma.user.update({
-      where: { id: user.userId },
-      data: { image: null },
-    });
+    try {
+      await deleteFileFromCloudinary(existingUser.image);
+    } catch (err) {
+      console.log("Cloudinary delete failed:", err);
+    }
   }
+
+  const updated = await prisma.user.update({
+    where: { id: user.userId },
+    data: { image: null },
+  });
 
   sendResponse(res, {
     success: true,
     httpCode: status.OK,
     message: "Profile photo removed successfully",
+    data: {
+      image: updated.image,
+    },
   });
 });
 

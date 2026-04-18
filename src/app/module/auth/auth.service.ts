@@ -17,7 +17,10 @@ import {  userStatus } from "../../../generated/prisma/enums";
 /** Must match `session.expiresIn` in lib/auth.ts (seconds) → ms for Date */
 const SESSION_DURATION_MS = 60 * 60 * 24 * 1000;
 
-const registerUSer = async (payload: IRegisterUserPayload) => {
+const registerUSer = async (
+  payload: IRegisterUserPayload,
+  imageUrl?: string
+) => {
   const { name, email, password } = payload;
 
   const data = await auth.api.signUpEmail({
@@ -27,6 +30,23 @@ const registerUSer = async (payload: IRegisterUserPayload) => {
   if (!data.user) {
     throw new AppError(status.BAD_REQUEST, "Registration failed");
   }
+
+  // ✅ SAFE USER SYNC (FIXED PART)
+  await prisma.user.upsert({
+  where: {
+    email: data.user.email, // ✅ FIX
+  },
+  update: {
+    name: data.user.name,
+    image: imageUrl ?? null,
+  },
+  create: {
+    id: data.user.id,
+    email: data.user.email,
+    name: data.user.name,
+    image: imageUrl ?? null,
+  },
+});
 
   const token = data.token;
 
@@ -50,41 +70,6 @@ const registerUSer = async (payload: IRegisterUserPayload) => {
     emailVerified: data.user.emailVerified,
   });
 
-  // Parse token expiration from JWT payload
-  const decodedAccessToken: any = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
-  const decodedRefreshToken: any = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET);
-
-  const accessTokenExpiresAt = decodedAccessToken.success && decodedAccessToken.data?.exp 
-    ? new Date(decodedAccessToken.data.exp * 1000) 
-    : new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  const refreshTokenExpiresAt = decodedRefreshToken.success && decodedRefreshToken.data?.exp 
-    ? new Date(decodedRefreshToken.data.exp * 1000) 
-    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  // Save or update Account record with tokens
-  await prisma.account.upsert({
-    where: {
-      id: `account_${data.user.id}_credential`,
-    },
-    create: {
-      id: `account_${data.user.id}_credential`,
-      accountId: "credential",
-      providerId: "credential",
-      userId: data.user.id,
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      accessTokenExpiresAt: accessTokenExpiresAt,
-      refreshTokenExpiresAt: refreshTokenExpiresAt,
-    },
-    update: {
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      accessTokenExpiresAt: accessTokenExpiresAt,
-      refreshTokenExpiresAt: refreshTokenExpiresAt,
-    },
-  });
-
   return {
     user: data.user,
     token,
@@ -94,6 +79,7 @@ const registerUSer = async (payload: IRegisterUserPayload) => {
     email: data.user.email,
   };
 };
+
 
 const loginUser = async (payload: ILoginUserPayload) => {
   const { email, password } = payload;
@@ -176,11 +162,14 @@ const loginUser = async (payload: ILoginUserPayload) => {
 // =====================
 const getMe = async (userId: string) => {
   const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-    include: {
-      admin: true,
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true, // ✅ MUST
+      role: true,
+      status: true,
     },
   });
 
@@ -553,37 +542,46 @@ const resetPassword = async (email : string, otp : string, newPassword : string)
   })
 }
 const googleLoginSuccess = async (session: Record<string, any>) => {
+  const googleImage =
+    session.user.image ||
+    session.user.picture ||
+    session.user.avatar ||
+    null;
 
-    const user = await prisma.user.upsert({
-      where: { id: session.user.id },
-      update: {
-        name: session.user.name,
-        email: session.user.email,
-      },
-      create: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-      },
-    });
-  
-    const accessToken = tokenUtils.getAccessToken({
-      userId: user.id,
-      role: user.role,
-      name: user.name,
-    });
-  
-    const refreshToken = tokenUtils.getRefreshToken({
-      userId: user.id,
-      role: user.role,
-      name: user.name,
-    });
-  
-    return {
-      accessToken,
-      refreshToken,
-    };
+  const user = await prisma.user.upsert({
+    where: { id: session.user.id },
+    update: {
+      name: session.user.name,
+      email: session.user.email,
+      image: googleImage, // ✅ FIXED
+    },
+    create: {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      image: googleImage, // ✅ FIXED
+    },
+  });
+
+  const accessToken = tokenUtils.getAccessToken({
+    userId: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+  });
+
+  const refreshToken = tokenUtils.getRefreshToken({
+    userId: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+  });
+
+  return {
+    accessToken,
+    refreshToken,
   };
+};
 
 
 export const AuthService = {

@@ -5,5 +5,7 @@ export interface IRequestUser{
     role : Role;
     email : string;
     emailVerified?: boolean; // 🔥 ADD THIS
-    status?: string;         // optional but recommended
+    status?: string; 
+    image?: string | null;
+    isDeleted: boolean;        // optional but recommended
 }

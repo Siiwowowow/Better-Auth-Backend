@@ -8,9 +8,21 @@ import status from "http-status";
 import AppError from "../../errorHelpers/AppError";
 import { envVars } from "../../config/env";
 import { auth } from "../../lib/auth";
+import { uploadFileToCloudinary } from "../../config/cloudinary.config";
 
 const registerUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthService.registerUSer(req.body);
+  // ✅ File থাকলে Cloudinary তে upload করুন
+  let imageUrl: string | undefined;
+
+  const files = req.files as { [fieldName: string]: Express.Multer.File[] } | undefined;
+
+  if (files?.profilePhoto?.[0]) {
+    const file = files.profilePhoto[0];
+    const uploadResult = await uploadFileToCloudinary(file.buffer, file.originalname);
+    imageUrl = uploadResult.secure_url;
+  }
+
+  const result = await AuthService.registerUSer(req.body, imageUrl);
 
   const { accessToken, refreshToken, token, ...rest } = result;
 
@@ -236,11 +248,13 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
     return res.redirect(`${envVars.FRONTEND_URL}/?login=error`);
   }
 
-  const session = await auth.api.getSession({
-    headers: {
-      Cookie: `better-auth.session_token=${sessionToken}`,
-    },
-  });
+ const session = await auth.api.getSession({
+  headers: {
+    Cookie: `better-auth.session_token=${sessionToken}`,
+  },
+});
+
+console.log("GOOGLE SESSION:", session?.user); // 🔥 DEBUG (temporary)
 
   if (!session || !session.user) {
     return res.redirect(`${envVars.FRONTEND_URL}/?login=error`);
