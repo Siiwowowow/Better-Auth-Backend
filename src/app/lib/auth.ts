@@ -5,8 +5,22 @@ import { Role, userStatus } from "../../generated/prisma/enums";
 import { bearer, emailOTP } from "better-auth/plugins";
 import { sendEmail } from "../utils/email";
 import { envVars } from "../config/env";
-// If your Prisma file is located elsewhere, you can change the path
 
+// Helper to convert duration string (e.g., "1d", "7h", "30m", "10s") to seconds
+function durationToSeconds(duration: string): number {
+  const value = parseInt(duration, 10);
+  if (duration.endsWith('d')) return value * 24 * 60 * 60;
+  if (duration.endsWith('h')) return value * 60 * 60;
+  if (duration.endsWith('m')) return value * 60;
+  if (duration.endsWith('s')) return value;
+  // If just a number, treat as seconds
+  return isNaN(value) ? 60 * 60 * 24 : value;
+}
+
+// Helper to convert duration string to milliseconds
+function durationToMs(duration: string): number {
+  return durationToSeconds(duration) * 1000;
+}
 
 export const auth = betterAuth({
   baseURL: envVars.BETTER_AUTH_URL,
@@ -113,39 +127,40 @@ export const auth = betterAuth({
     })
 ],
 
-  session: {
-    expiresIn: 60 * 60 * 24, // ✅ 1 day (FIXED)
-    updateAge: 60 * 60 * 24,
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 60 * 24,
-    },
-  },
+   session: {
+     expiresIn: durationToSeconds(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN),
+     updateAge: durationToSeconds(envVars.BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE),
+     cookieCache: {
+       enabled: true,
+       maxAge: durationToSeconds(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN),
+     },
+   },
   redirectURLs:{
     signIn : `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success`,
 },
 trustedOrigins: [envVars.BETTER_AUTH_URL, envVars.FRONTEND_URL],
 
-advanced: {
-    // disableCSRFCheck: true,
-    useSecureCookies : false,
-    cookies:{
-        state:{
-            attributes:{
-                sameSite: "none",
-                secure: true,
-                httpOnly: true,
-                path: "/",
-            }
-        },
-        sessionToken:{
-            attributes:{
-                sameSite: "none",
-                secure: true,
-                httpOnly: true,
-                path: "/",
-            }
-        }
-    }
-}
+  advanced: {
+      // disableCSRFCheck: true,
+      useSecureCookies: envVars.NODE_ENV === "production",
+      cookies:{
+          state:{
+              attributes:{
+                  sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                  secure: envVars.NODE_ENV === "production",
+                  httpOnly: true,
+                  path: "/",
+              }
+          },
+          sessionToken:{
+              attributes:{
+                  sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                  secure: envVars.NODE_ENV === "production",
+                  httpOnly: true,
+                  path: "/",
+                  maxAge: durationToMs(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN),
+              }
+          }
+      }
+  }
 });

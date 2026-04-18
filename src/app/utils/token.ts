@@ -27,18 +27,20 @@ const getRefreshToken = (payload: JwtPayload) => {
 }
 
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const accessTokenCookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 1000,
 };
 
 const refreshTokenCookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 1000 * 7,
 };
@@ -72,8 +74,8 @@ const clearRefreshTokenCookie = (res: Response) => {
 const setBetterAuthSessionCookie = (res: Response, token: string) => {
     CookieUtils.setCookie(res, "better-auth.session_token", token, {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         path: '/',
         //1 day
         maxAge: 60 * 60 * 24 * 1000,
@@ -82,8 +84,8 @@ const setBetterAuthSessionCookie = (res: Response, token: string) => {
 
 const betterAuthSessionCookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
 };
 

@@ -12,61 +12,39 @@ export const checkAuth =
   (...authRoles: Role[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const sessionToken = CookieUtils.getCookie(
-        req,
-        "better-auth.session_token"
-      );
-
+      const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
       const accessToken = CookieUtils.getCookie(req, "accessToken");
 
       let user: any = null;
 
-      // =========================
-      // 🔥 1. SESSION AUTH (PRIMARY)
-      // =========================
       if (sessionToken) {
         const session = await auth.api.getSession({
           headers: {
-            "Cookie": `better-auth.session_token=${sessionToken}`
-          }
+            Cookie: `better-auth.session_token=${sessionToken}`,
+          },
         });
 
         if (!session || !session.user) {
           throw new AppError(status.UNAUTHORIZED, "Invalid session token");
         }
 
-        user = session.user;
+        user = session.user; // { id, role, email, ... }
       }
 
-      // =========================
-      // 🔥 2. JWT AUTH (FALLBACK)
-      // =========================
       else if (accessToken) {
-        const verified = jwtUtils.verifyToken(
-          accessToken,
-          envVars.ACCESS_TOKEN_SECRET
-        );
+        const verified = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
 
         if (!verified.success) {
           throw new AppError(status.UNAUTHORIZED, "Invalid access token");
         }
 
-        user = verified.data;
+        user = verified.data; // { userId, role, email, ... }
       }
 
-      // =========================
-      // ❌ NO AUTH FOUND
-      // =========================
       else {
-        throw new AppError(
-          status.UNAUTHORIZED,
-          "Unauthorized access! No token found"
-        );
+        throw new AppError(status.UNAUTHORIZED, "Unauthorized access! No token found");
       }
 
-      // =========================
-      // 🔥 USER STATUS CHECK
-      // =========================
       const isMeRoute = req.originalUrl.endsWith("/me");
 
       if (
@@ -78,31 +56,20 @@ export const checkAuth =
       }
 
       if (!isMeRoute && user.status === userStatus.PENDING_VERIFICATION) {
-        throw new AppError(
-          status.FORBIDDEN,
-          "Account pending verification. Please verify your email to continue"
-        );
+        throw new AppError(status.FORBIDDEN, "Account pending verification. Please verify your email.");
       }
 
-      // =========================
-      // 🔥 EMAIL VERIFICATION CHECK
-      // =========================
       if (!isMeRoute && !user.emailVerified) {
-        throw new AppError(status.FORBIDDEN, "Email verification required. Please verify your email to access this resource");
+        throw new AppError(status.FORBIDDEN, "Email verification required.");
       }
 
-      // =========================
-      // 🔥 ROLE CHECK
-      // =========================
       if (authRoles.length > 0 && !authRoles.includes(user.role)) {
         throw new AppError(status.FORBIDDEN, "Forbidden access");
       }
 
-      // =========================
-      // 🚀 CLEAN req.user (IMPORTANT ADD)
-      // =========================
+      // ✅ KEY FIX: Session এ `id`, JWT payload এ `userId`
       req.user = {
-        userId: user.id,
+        userId: user.userId || user.id,
         role: user.role,
         email: user.email,
       };
