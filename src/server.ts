@@ -1,7 +1,7 @@
 import { Server } from "http";
-import app from "./app";
-import { seedSuperAdmin } from "./app/config/seed";
-import { envVars } from "./app/config/env";
+import app from "./app.js";
+import { seedSuperAdmin } from "./app/config/seed.js";
+import { envVars } from "./app/config/env.js";
 
 
 let server : Server;

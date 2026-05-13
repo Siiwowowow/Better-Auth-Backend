@@ -1,10 +1,10 @@
 //src/app/module/admin/admin.route.ts
 import { Router } from "express";
-import { Role } from "../../../generated/prisma/enums";
-import { checkAuth } from "../../middleware/checkAuth";
-import { validateRequest } from "../../middleware/validateRequest";
-import { AdminController } from "./admin.controller";
-import { updateAdminZodSchema } from "./admin.validation";
+import { Role } from "@prisma/client";
+import { checkAuth } from "../../middleware/checkAuth.js";
+import { validateRequest } from "../../middleware/validateRequest.js";
+import { AdminController } from "./admin.controller.js";
+import { updateAdminZodSchema } from "./admin.validation.js";
 
 const router = Router();
 

@@ -1,8 +1,9 @@
 //src/app/config/seed.ts
-import { Role } from "../../generated/prisma/enums";
-import { envVars } from "../config/env";
-import { auth } from "../lib/auth";
-import { prisma } from "../lib/prisma";
+//src/app/config/seed.ts
+import { Role } from "@prisma/client";
+import { envVars } from "../config/env.js";
+import { auth } from "../lib/auth.js";
+import { prisma } from "../lib/prisma.js";
 
 export const seedSuperAdmin = async () => {
   try {
@@ -38,9 +39,10 @@ export const seedSuperAdmin = async () => {
         email: envVars.SUPER_ADMIN_EMAIL,
         password: envVars.SUPER_ADMIN_PASSWORD,
         name: "Super Admin",
+        // @ts-ignore - custom fields type issue in seed
         role: Role.SUPER_ADMIN,
+        // @ts-ignore
         needPasswordChange: false,
-        rememberMe: false,
       },
     });
 
@@ -49,7 +51,7 @@ export const seedSuperAdmin = async () => {
     }
 
     // 2️⃣ CREATE ADMIN + USER UPDATE (ATOMIC)
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       await tx.user.update({
         where: {
           id: superAdminUser.user.id,

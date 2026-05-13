@@ -1,0 +1,17 @@
+// prisma/schema/category.prisma
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Medicines relationship (will be added later when Medicine model is ported)
+  // medicines   Medicine[]
+
+  @@map("categories")
+}

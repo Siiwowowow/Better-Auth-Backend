@@ -1,14 +1,14 @@
 //src/app/module/auth/auth.controller.ts
 import { Request, Response } from "express";
-import { catchAsync } from "../../shared/catchAsync";
-import { AuthService } from "./auth.service";
-import { sendResponse } from "../../shared/sendResponse";
-import { tokenUtils } from "../../utils/token";
+import { catchAsync } from "../../shared/catchAsync.js";
+import { AuthService } from "./auth.service.js";
+import { sendResponse } from "../../shared/sendResponse.js";
+import { tokenUtils } from "../../utils/token.js";
 import status from "http-status";
-import AppError from "../../errorHelpers/AppError";
-import { envVars } from "../../config/env";
-import { auth } from "../../lib/auth";
-import { uploadFileToCloudinary } from "../../config/cloudinary.config";
+import AppError from "../../errorHelpers/AppError.js";
+import { envVars } from "../../config/env.js";
+import { auth } from "../../lib/auth.js";
+import { uploadFileToCloudinary } from "../../config/cloudinary.config.js";
 
 const registerUser = catchAsync(async (req: Request, res: Response) => {
   // ✅ File থাকলে Cloudinary তে upload করুন

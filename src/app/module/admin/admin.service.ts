@@ -1,10 +1,11 @@
 //src/app/module/admin/admin.service.ts
+//src/app/module/admin/admin.service.ts
 import status from "http-status";
-import { IRequestUser } from "../../interfaces/requestUser.interface";
-import { prisma } from "../../lib/prisma";
-import { IUpdateAdminPayload, IChangeUserRolePayload, IChangeUserStatusPayload } from "./admin.interface";
-import AppError from "../../errorHelpers/AppError";
-import { userStatus } from "../../../generated/prisma/enums";
+import { IRequestUser } from "../../interfaces/requestUser.interface.js";
+import { prisma } from "../../lib/prisma.js";
+import { IUpdateAdminPayload, IChangeUserRolePayload, IChangeUserStatusPayload } from "./admin.interface.js";
+import AppError from "../../errorHelpers/AppError.js";
+import { userStatus } from "@prisma/client";
 
 const getAllAdmins = async () => {
     const admins = await prisma.admin.findMany({
@@ -72,7 +73,7 @@ const deleteAdmin = async (id: string, user: IRequestUser) => {
         throw new AppError(status.BAD_REQUEST, "You cannot delete yourself");
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
         await tx.admin.update({
             where: { id },
             data: {

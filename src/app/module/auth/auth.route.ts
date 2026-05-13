@@ -1,9 +1,9 @@
 //src/app/module/auth/auth.route.ts
 import { Router } from "express";
-import { AuthController } from "./auth.controller";
-import { checkAuth } from "../../middleware/checkAuth";
-import { Role } from "../../../generated/prisma/browser";
-import { multerUpload } from "../../config/multer.config";
+import { AuthController } from "./auth.controller.js";
+import { checkAuth } from "../../middleware/checkAuth.js";
+import { Role } from "@prisma/client";
+import { multerUpload } from "../../config/multer.config.js";
 
 const router = Router();
 

@@ -1,14 +1,14 @@
 import express, { Application, Request, Response } from "express";
-import { IndexRoutes } from "./app/routes";
-import { notFound } from "./app/middleware/notFound";
+import { IndexRoutes } from "./app/routes/index.js";
+import { notFound } from "./app/middleware/notFound.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./app/lib/auth";
+import { auth } from "./app/lib/auth.js";
 import path from "path";
 import qs from "qs"
-import { envVars } from "./app/config/env";
-import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
+import { envVars } from "./app/config/env.js";
+import { globalErrorHandler } from "./app/middleware/globalErrorHandler.js";
 
 
 const app: Application = express();

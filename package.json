@@ -13,7 +13,8 @@
     "studio": "prisma studio",
     "push": "prisma db push",
     "pull": "prisma db pull",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +49,7 @@
     "@types/ejs": "^3.1.5",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.3.0",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.16.0",

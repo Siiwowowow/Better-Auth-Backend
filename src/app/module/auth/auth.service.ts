@@ -2,17 +2,17 @@
 //src/app/module/auth/auth.service.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import status from "http-status";
-import AppError from "../../errorHelpers/AppError";
-import { auth } from "../../lib/auth";
-import { IChangePasswordPayload, ILoginUserPayload, IRegisterUserPayload } from "./auth.interface";
-import { tokenUtils } from "../../utils/token";
-import { prisma } from "../../lib/prisma";
-import { jwtUtils } from "../../utils/jwt";
+import AppError from "../../errorHelpers/AppError.js";
+import { auth } from "../../lib/auth.js";
+import { IChangePasswordPayload, ILoginUserPayload, IRegisterUserPayload } from "./auth.interface.js";
+import { tokenUtils } from "../../utils/token.js";
+import { prisma } from "../../lib/prisma.js";
+import { jwtUtils } from "../../utils/jwt.js";
 import { JwtPayload } from "jsonwebtoken";
-import { envVars } from "../../config/env";
+import { envVars } from "../../config/env.js";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { randomBytes } from "node:crypto";
-import {  userStatus } from "../../../generated/prisma/enums";
+import { userStatus } from "@prisma/client";
 
 /** Must match `session.expiresIn` in lib/auth.ts (seconds) → ms for Date */
 const SESSION_DURATION_MS = 60 * 60 * 24 * 1000;

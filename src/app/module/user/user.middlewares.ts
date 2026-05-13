@@ -1,8 +1,8 @@
 // src/modules/user/user.middleware.ts
 
 import { NextFunction, Request, Response } from "express";
-import { IUpdateUserProfilePayload } from "./user.interface";
-import { uploadFileToCloudinary } from "../../config/cloudinary.config";
+import { IUpdateUserProfilePayload } from "./user.interface.js";
+import { uploadFileToCloudinary } from "../../config/cloudinary.config.js";
 
 export const updateMyProfileMiddleware = async (
   req: Request,

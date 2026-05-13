@@ -2,11 +2,11 @@
 import { NextFunction, Request, Response } from "express";
 import status from "http-status";
 import z from "zod";
-import { deleteFileFromCloudinary } from "../config/cloudinary.config";
-import { envVars } from "../config/env";
-import AppError from "../errorHelpers/AppError";
-import { handleZodError } from "../errorHelpers/handleZodError";
-import { TErrorResponse, TErrorSources } from "../interfaces/error.interface";
+import { deleteFileFromCloudinary } from "../config/cloudinary.config.js";
+import { envVars } from "../config/env.js";
+import AppError from "../errorHelpers/AppError.js";
+import { handleZodError } from "../errorHelpers/handleZodError.js";
+import { TErrorResponse, TErrorSources } from "../interfaces/error.interface.js";
 
 
 

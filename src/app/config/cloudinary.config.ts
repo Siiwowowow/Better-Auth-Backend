@@ -1,8 +1,8 @@
 // src/app/config/cloudinary.config.ts
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 import status from "http-status";
-import AppError from "../errorHelpers/AppError";
-import { envVars } from "./env";
+import AppError from "../errorHelpers/AppError.js";
+import { envVars } from "./env.js";
 
 cloudinary.config({
     cloud_name: envVars.CLOUDINARY.CLOUDINARY_CLOUD_NAME,

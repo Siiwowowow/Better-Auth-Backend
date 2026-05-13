@@ -2,7 +2,7 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
-import { envVars } from "./src/app/config/env";
+import { envVars } from "./src/app/config/env.js";
 
 export default defineConfig({
   schema: "prisma/schema",
