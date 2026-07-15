@@ -13,7 +13,7 @@ export const checkAuth =
   (...authRoles: Role[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token");
+      const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
       const accessToken = CookieUtils.getCookie(req, "accessToken");
 
       let user: any = null;
@@ -23,7 +23,7 @@ export const checkAuth =
         try {
           const session = await auth.api.getSession({
             headers: {
-              Cookie: `better-auth.session_token=${sessionToken}`,
+              Cookie: `better-auth.session_token=${sessionToken}; __Secure-better-auth.session_token=${sessionToken}`,
             },
           });
           if (session?.user) {

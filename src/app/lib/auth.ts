@@ -3,7 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma.js";
 import { Role, userStatus } from "@prisma/client";
 import { bearer, emailOTP } from "better-auth/plugins";
-import { sendEmail } from "../utils/email.js";
+import { addEmailJob } from "./emailQueue.js";
 import { envVars } from "../config/env.js";
 
 // Helper to convert duration string (e.g., "1d", "7h", "30m", "10s") to seconds
@@ -38,7 +38,7 @@ export const auth = betterAuth({
         clientId: envVars.GOOGLE_CLIENT_ID,
         clientSecret: envVars.GOOGLE_CLIENT_SECRET,
         callbackURL: envVars.GOOGLE_CALLBACK_URL,
-        mapProfileToUser: ()=>{
+        mapProfileToUser: (profile: any) => {
             return {
                 role : Role.USER,
                 status : userStatus.ACTIVE,
@@ -46,6 +46,7 @@ export const auth = betterAuth({
                 emailVerified : true,
                 isDeleted : false,
                 deletedAt : null,
+                image: profile.picture || profile.avatar || null,
             }
         }
     }
@@ -94,7 +95,7 @@ export const auth = betterAuth({
               })
               
               if(user && !user.emailVerified){
-                sendEmail({
+                await addEmailJob({
                     to : email,
                     subject : "Verify your email",
                     templateName : "otp",
@@ -102,7 +103,7 @@ export const auth = betterAuth({
                         name : user.name,
                         otp,
                     }
-                })
+                });
               }
             }else if(type === "forget-password"){
                 const user = await prisma.user.findUnique({
@@ -112,7 +113,7 @@ export const auth = betterAuth({
                 })
 
                 if(user){
-                    sendEmail({
+                    await addEmailJob({
                         to : email,
                         subject : "Password Reset OTP",
                         templateName : "otp",
@@ -120,7 +121,7 @@ export const auth = betterAuth({
                             name : user.name,
                             otp,
                         }
-                    })
+                    });
                 }
             }
         },
@@ -138,7 +139,7 @@ export const auth = betterAuth({
      },
    },
   redirectURLs:{
-    signIn : `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success`,
+    signIn : `${new URL(envVars.BETTER_AUTH_URL).origin}/api/v1/auth/google/success`,
 },
 trustedOrigins: [envVars.BETTER_AUTH_URL, envVars.FRONTEND_URL],
 

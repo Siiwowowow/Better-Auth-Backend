@@ -2,11 +2,16 @@ import { Server } from "http";
 import app from "./app.js";
 import { seedSuperAdmin } from "./app/config/seed.js";
 import { envVars } from "./app/config/env.js";
+import { connectRedis } from "./app/lib/redis.js";
+import "./app/lib/emailWorker.js"; // Initialize the background worker
+import { startUnverifiedCleanup } from "./app/lib/cleanup.js";
 
 
 let server : Server;
 const bootstrap = async() => {
     try {
+        await connectRedis();
+        startUnverifiedCleanup();
         await seedSuperAdmin();
         server = app.listen(envVars.PORT, () => {
             console.log(`Server is running on http://localhost:${envVars.PORT}`);

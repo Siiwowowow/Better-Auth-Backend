@@ -13,6 +13,7 @@ import { envVars } from "../../config/env.js";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { randomBytes } from "node:crypto";
 import { userStatus } from "@prisma/client";
+import { getUserImageWithFallback } from "../../utils/avatar.js";
 
 /** Must match `session.expiresIn` in lib/auth.ts (seconds) → ms for Date */
 const SESSION_DURATION_MS = 60 * 60 * 24 * 1000;
@@ -57,7 +58,8 @@ const registerUSer = async (
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
-    needPasswordChange: data.user.needPasswordChange, // ✅ ADDED
+    needPasswordChange: data.user.needPasswordChange,
+    image: getUserImageWithFallback(data.user.name, data.user.email, imageUrl ?? null),
   });
 
   const refreshToken = tokenUtils.getRefreshToken({
@@ -68,7 +70,8 @@ const registerUSer = async (
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
-    needPasswordChange: data.user.needPasswordChange, // ✅ ADDED
+    needPasswordChange: data.user.needPasswordChange,
+    image: getUserImageWithFallback(data.user.name, data.user.email, imageUrl ?? null),
   });
 
   return {
@@ -101,7 +104,8 @@ const loginUser = async (payload: ILoginUserPayload) => {
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
-    needPasswordChange: data.user.needPasswordChange, // ✅ ADDED
+    needPasswordChange: data.user.needPasswordChange,
+    image: getUserImageWithFallback(data.user.name, data.user.email, data.user.image),
   });
 
   const refreshToken = tokenUtils.getRefreshToken({
@@ -112,7 +116,8 @@ const loginUser = async (payload: ILoginUserPayload) => {
     status: data.user.status,
     isDeleted: data.user.isDeleted,
     emailVerified: data.user.emailVerified,
-    needPasswordChange: data.user.needPasswordChange, // ✅ ADDED
+    needPasswordChange: data.user.needPasswordChange,
+    image: getUserImageWithFallback(data.user.name, data.user.email, data.user.image),
   });
 
   await prisma.account.updateMany({
@@ -153,7 +158,10 @@ const getMe = async (userId: string) => {
     throw new AppError(status.NOT_FOUND, "User not found");
   }
 
-  return user;
+  return {
+    ...user,
+    image: getUserImageWithFallback(user.name, user.email, user.image),
+  };
 };
 const getNewToken = async (refreshToken : string, sessionToken : string) => {
 
@@ -188,6 +196,7 @@ const getNewToken = async (refreshToken : string, sessionToken : string) => {
         isDeleted: data.isDeleted,
         emailVerified: data.emailVerified,
         needPasswordChange: data.needPasswordChange,
+        image: getUserImageWithFallback(data.name, data.email, data.image),
     });
 
     const newRefreshToken = tokenUtils.getRefreshToken({
@@ -199,6 +208,7 @@ const getNewToken = async (refreshToken : string, sessionToken : string) => {
         isDeleted: data.isDeleted,
         emailVerified: data.emailVerified,
         needPasswordChange: data.needPasswordChange,
+        image: getUserImageWithFallback(data.name, data.email, data.image),
     });
 
     const { token } = await prisma.session.update({
@@ -348,6 +358,7 @@ const changePassword = async (
             isDeleted: user.isDeleted,
             emailVerified: user.emailVerified,
             needPasswordChange: user.needPasswordChange,
+            image: getUserImageWithFallback(user.name, user.email, user.image),
         });
 
         const refreshToken = tokenUtils.getRefreshToken({
@@ -359,6 +370,7 @@ const changePassword = async (
             isDeleted: user.isDeleted,
             emailVerified: user.emailVerified,
             needPasswordChange: user.needPasswordChange,
+            image: getUserImageWithFallback(user.name, user.email, user.image),
         });
 
         // Parse token expiration from JWT payload and save to Account
@@ -543,6 +555,7 @@ const googleLoginSuccess = async (session: Record<string, any>) => {
     isDeleted: user.isDeleted,
     emailVerified: user.emailVerified,
     needPasswordChange: user.needPasswordChange,
+    image: getUserImageWithFallback(user.name, user.email, user.image),
   });
 
   const refreshToken = tokenUtils.getRefreshToken({
@@ -554,6 +567,7 @@ const googleLoginSuccess = async (session: Record<string, any>) => {
     isDeleted: user.isDeleted,
     emailVerified: user.emailVerified,
     needPasswordChange: user.needPasswordChange,
+    image: getUserImageWithFallback(user.name, user.email, user.image),
   });
 
   return {

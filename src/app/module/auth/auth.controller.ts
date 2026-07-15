@@ -83,7 +83,7 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
 const getNewToken = catchAsync(
     async (req: Request, res: Response) => {
         const refreshToken = req.cookies.refreshToken;
-        const betterAuthSessionToken = req.cookies["better-auth.session_token"];
+        const betterAuthSessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"];
         if (!refreshToken) {
             throw new AppError(status.UNAUTHORIZED, "Refresh token is missing");
         }
@@ -109,7 +109,7 @@ const getNewToken = catchAsync(
 )
 const changePassword = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
-    const betterAuthSessionToken = req.cookies["better-auth.session_token"] as
+    const betterAuthSessionToken = (req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"]) as
         | string
         | undefined;
 
@@ -144,7 +144,7 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logoutUser = catchAsync(async (req: Request, res: Response) => {
-  const sessionToken = req.cookies["better-auth.session_token"] as
+  const sessionToken = (req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"]) as
     | string
     | undefined;
 
@@ -203,7 +203,7 @@ const googleLogin = catchAsync((req: Request, res: Response) => {
 
   const encodedRedirectPath = encodeURIComponent(redirectPath);
 
-  const callbackURL = `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success?redirect=${encodedRedirectPath}`;
+  const callbackURL = `${new URL(envVars.BETTER_AUTH_URL).origin}/api/v1/auth/google/success?redirect=${encodedRedirectPath}`;
 
   const html = `
     <html>
@@ -211,7 +211,7 @@ const googleLogin = catchAsync((req: Request, res: Response) => {
         <p>Redirecting to Google...</p>
 
         <script>
-          fetch("${envVars.BETTER_AUTH_URL}/api/auth/sign-in/social", {
+          fetch("${envVars.BETTER_AUTH_URL}/sign-in/social", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -242,7 +242,7 @@ const googleLogin = catchAsync((req: Request, res: Response) => {
 });
 
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
-  const sessionToken = req.cookies["better-auth.session_token"];
+  const sessionToken = req.cookies["better-auth.session_token"] || req.cookies["__Secure-better-auth.session_token"];
 
   if (!sessionToken) {
     return res.redirect(`${envVars.FRONTEND_URL}/?login=error`);
@@ -250,7 +250,7 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
 
  const session = await auth.api.getSession({
   headers: {
-    Cookie: `better-auth.session_token=${sessionToken}`,
+    Cookie: `better-auth.session_token=${sessionToken}; __Secure-better-auth.session_token=${sessionToken}`,
   },
 });
 
