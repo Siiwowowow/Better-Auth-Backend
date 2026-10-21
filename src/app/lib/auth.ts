@@ -3,7 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma.js";
 import { Role, userStatus } from "@prisma/client";
 import { bearer, emailOTP } from "better-auth/plugins";
-import { addEmailJob } from "./emailQueue.js";
+import { sendEmail } from "../utils/email.js";
 import { envVars } from "../config/env.js";
 
 // Helper to convert duration string (e.g., "1d", "7h", "30m", "10s") to seconds
@@ -95,7 +95,7 @@ export const auth = betterAuth({
               })
               
               if(user && !user.emailVerified){
-                await addEmailJob({
+                await sendEmail({
                     to : email,
                     subject : "Verify your email",
                     templateName : "otp",
@@ -113,7 +113,7 @@ export const auth = betterAuth({
                 })
 
                 if(user){
-                    await addEmailJob({
+                    await sendEmail({
                         to : email,
                         subject : "Password Reset OTP",
                         templateName : "otp",
