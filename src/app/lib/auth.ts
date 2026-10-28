@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma.js";
@@ -85,7 +86,7 @@ export const auth = betterAuth({
     emailOTP({
         overrideDefaultEmailVerification: true,
         async sendVerificationOTP({email, otp, type}) {
-            if (email === envVars.SUPER_ADMIN_EMAIL) return;
+            if (email === envVars.ADMIN_EMAIL) return;
 
             if(type === "email-verification"){
               const user = await prisma.user.findUnique({
@@ -161,7 +162,7 @@ trustedOrigins: [envVars.BETTER_AUTH_URL, envVars.FRONTEND_URL],
                   secure: envVars.NODE_ENV === "production",
                   httpOnly: true,
                   path: "/",
-                  maxAge: durationToMs(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN),
+                  maxAge: durationToSeconds(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN),
               }
           }
       }

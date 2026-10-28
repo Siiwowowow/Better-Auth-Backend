@@ -16,21 +16,21 @@ router.get("/:id", CategoryController.getCategoryById);
 // Admin only routes
 router.post(
   "/", 
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN), 
+  checkAuth(Role.ADMIN), 
   validateRequest(createCategoryZodSchema),
   CategoryController.createCategory
 );
 
 router.patch(
   "/:id", 
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN), 
+  checkAuth(Role.ADMIN), 
   validateRequest(updateCategoryZodSchema),
   CategoryController.updateCategory
 );
 
 router.delete(
   "/:id", 
-  checkAuth(Role.ADMIN, Role.SUPER_ADMIN), 
+  checkAuth(Role.ADMIN), 
   CategoryController.deleteCategory
 );
 

@@ -1,11 +1,76 @@
-enum Role{
-    SUPER_ADMIN
-    ADMIN
-    USER
+enum Role {
+  ADMIN
+  USER
 }
-enum userStatus{
-    PENDING_VERIFICATION
-    BLOCKED
-    DELETED
-    ACTIVE
+enum userStatus {
+  PENDING_VERIFICATION
+  BLOCKED
+  DELETED
+  ACTIVE
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+  DEMO
+}
+
+enum PaymentProvider {
+  DEMO
+  BKASH
+  STRIPE
+  SSLCOMMERZ
+}
+
+enum InventoryMovementType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGE
+  TRANSFER
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  RECEIVED
+  REFUNDED
+}
+
+enum ShipmentStatus {
+  PENDING
+  READY
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
 }

@@ -20,6 +20,15 @@ model User {
 
   sessions           Session[]
   accounts           Account[]
+  addresses          Address[]
+  cart               Cart?
+  orders             Order[]
+  wishlists          Wishlist[]
+  reviews            Review[]
+  returnRequests     ReturnRequest[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  couponRedemptions  CouponRedemption[]
 
   @@map("user")
 }

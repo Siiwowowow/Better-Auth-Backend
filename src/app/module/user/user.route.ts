@@ -11,7 +11,7 @@ const router = Router();
 
 router.patch(
   "/update-my-profile",
-  checkAuth(Role.USER, Role.ADMIN, Role.SUPER_ADMIN), // ✅ এটা আগে ছিল না
+  checkAuth(Role.USER, Role.ADMIN), // ✅ এটা আগে ছিল না
   multerUpload.fields([{ name: "profilePhoto", maxCount: 1 }]),
   updateMyProfileMiddleware,
   validateRequest(UserValidation.updateUserProfileZodSchema),
@@ -20,7 +20,7 @@ router.patch(
 
 router.delete(
   "/remove-profile-photo",
-  checkAuth(Role.USER, Role.ADMIN, Role.SUPER_ADMIN),
+  checkAuth(Role.USER, Role.ADMIN),
   UserController.removeProfilePhoto
 );
 

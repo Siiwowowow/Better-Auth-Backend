@@ -14,7 +14,8 @@ export const checkAuth =
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
-      const accessToken = CookieUtils.getCookie(req, "accessToken");
+      const accessToken = CookieUtils.getCookie(req, "accessToken") ||
+        req.headers.authorization?.replace(/^Bearer\s+/i, "");
 
       let user: any = null;
 
@@ -22,9 +23,8 @@ export const checkAuth =
       if (sessionToken) {
         try {
           const session = await auth.api.getSession({
-            headers: {
-              Cookie: `better-auth.session_token=${sessionToken}; __Secure-better-auth.session_token=${sessionToken}`,
-            },
+            headers: new Headers({ cookie: req.headers.cookie ?? "" }),
+            query: { disableCookieCache: true },
           });
           if (session?.user) {
             user = session.user;

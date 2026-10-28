@@ -13,7 +13,7 @@
     "studio": "prisma studio",
     "push": "prisma db push",
     "pull": "prisma db pull",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "pnpm run build && tsx scripts/smoke.ts",
     "postinstall": "prisma generate"
   },
   "keywords": [],
@@ -33,6 +33,8 @@
     "dotenv": "^17.3.1",
     "ejs": "^5.0.2",
     "express": "^5.2.1",
+    "graphql": "^17.0.2",
+    "graphql-yoga": "^6.0.1",
     "http-status": "^2.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",

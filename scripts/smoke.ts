@@ -1,0 +1,21 @@
+import { createServer } from "node:http";
+import app from "../src/app.js";
+
+const server = createServer(app);
+await new Promise<void>((resolve) => server.listen(0, resolve));
+const address = server.address();
+if (!address || typeof address === "string") throw new Error("Smoke server did not start");
+const baseUrl = `http://127.0.0.1:${address.port}`;
+const health = await fetch(`${baseUrl}/`);
+const missing = await fetch(`${baseUrl}/route-that-does-not-exist`);
+const graphql = await fetch(`${baseUrl}/graphql`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: "{ categories { id name slug } }" }) });
+if (health.status !== 200) throw new Error(`Health check failed: ${health.status}`);
+if (missing.status !== 404) throw new Error(`404 check failed: ${missing.status}`);
+if (graphql.status !== 200) throw new Error(`GraphQL check failed: ${graphql.status}`);
+await health.text();
+await missing.text();
+const graphqlBody = await graphql.json() as { errors?: unknown[] };
+if (graphqlBody.errors?.length) throw new Error("GraphQL returned errors");
+server.closeAllConnections();
+await new Promise<void>((resolve) => server.close(() => resolve()));
+console.log("Smoke checks passed: health=200, missing-route=404, graphql=200");

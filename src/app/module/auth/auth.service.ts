@@ -11,7 +11,6 @@ import { jwtUtils } from "../../utils/jwt.js";
 import { JwtPayload } from "jsonwebtoken";
 import { envVars } from "../../config/env.js";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
-import { randomBytes } from "node:crypto";
 import { userStatus } from "@prisma/client";
 import { getUserImageWithFallback } from "../../utils/avatar.js";
 
@@ -87,9 +86,20 @@ const registerUSer = async (
 const loginUser = async (payload: ILoginUserPayload) => {
   const { email, password } = payload;
 
-  const data = await auth.api.signInEmail({
+  const { response: data, headers } = await auth.api.signInEmail({
     body: { email, password },
+    returnHeaders: true,
   });
+
+  const sessionHeader = headers.getSetCookie().find(value => /^(?:__Secure-)?better-auth\.session_token=/.test(value));
+  if (!sessionHeader) throw new AppError(status.INTERNAL_SERVER_ERROR, "Session cookie was not created");
+  const [cookiePair] = sessionHeader.split(";");
+  const separator = cookiePair!.indexOf("=");
+  const sessionCookie = {
+    name: cookiePair!.slice(0, separator),
+    value: decodeURIComponent(cookiePair!.slice(separator + 1)),
+    maxAge: Number(sessionHeader.match(/Max-Age=(\d+)/i)?.[1] ?? 86400),
+  };
 
   if (!data.user) {
     throw new AppError(status.UNAUTHORIZED, "Invalid email or password");
@@ -135,6 +145,7 @@ const loginUser = async (payload: ILoginUserPayload) => {
     token: data.token,
     accessToken,
     refreshToken,
+    sessionCookie,
   };
 };
 
@@ -177,6 +188,9 @@ const getNewToken = async (refreshToken : string, sessionToken : string) => {
     if(!isSessionTokenExists){
         throw new AppError(status.UNAUTHORIZED, "Invalid session token");
     }
+    if (isSessionTokenExists.expiresAt < new Date()) {
+        throw new AppError(status.UNAUTHORIZED, "Session token has expired");
+    }
 
     const verifiedRefreshToken = jwtUtils.verifyToken(refreshToken, envVars.REFRESH_TOKEN_SECRET)
 
@@ -186,6 +200,9 @@ const getNewToken = async (refreshToken : string, sessionToken : string) => {
     }
 
     const data = verifiedRefreshToken.data as JwtPayload;
+    if (data.userId !== isSessionTokenExists.userId) {
+        throw new AppError(status.UNAUTHORIZED, "Refresh token does not match session");
+    }
 
     const newAccessToken = tokenUtils.getAccessToken({
         userId: data.userId,
@@ -320,12 +337,11 @@ const changePassword = async (
 
         let newSessionToken: string | null = null;
 
-        if (sessionId) {
-            newSessionToken = randomBytes(32).toString("hex");
+        if (sessionId && sessionToken) {
+            newSessionToken = sessionToken;
             await prisma.session.update({
                 where: { id: sessionId },
                 data: {
-                    token: newSessionToken,
                     expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
                     updatedAt: new Date(),
                 },
@@ -333,7 +349,7 @@ const changePassword = async (
             await prisma.session.deleteMany({
                 where: {
                     userId: user.id,
-                    token: { not: newSessionToken },
+                    id: { not: sessionId },
                 },
             });
         } else {

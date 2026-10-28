@@ -1,20 +1,30 @@
-//src/app/module/admin/admin.interface.ts
-import { Role, userStatus } from "@prisma/client"; // Import from your generated Prisma enums
+// src/app/module/admin/admin.interface.ts
+import { Role, userStatus } from "@prisma/client";
+
+export interface ICreateAdminPayload {
+  name: string;
+  email: string;
+  profilePhoto?: string;
+  contactNumber?: string;
+}
 
 export interface IUpdateAdminPayload {
-    admin?: {
-        name?: string;
-        profilePhoto?: string;
-        contactNumber?: string;
-    }
+  admin?: {
+    name?: string;
+    profilePhoto?: string;
+    contactNumber?: string;
+  };
+  name?: string;
+  profilePhoto?: string;
+  contactNumber?: string;
 }
 
 export interface IChangeUserStatusPayload {
-    userId: string;
-    status: userStatus; // Changed from userStatus to status to match service usage
+  userId: string;
+  status: userStatus;
 }
 
 export interface IChangeUserRolePayload {
-    userId: string;
-    role: Role; // Use Role from your generated Prisma enums, not from better-auth
+  userId: string;
+  role: Role;
 }

@@ -1,6 +1,6 @@
 import { Server } from "http";
 import app from "./app.js";
-import { seedSuperAdmin } from "./app/config/seed.js";
+import { seedAdmin } from "./app/config/seed.js";
 import { envVars } from "./app/config/env.js";
 import { startUnverifiedCleanup } from "./app/lib/cleanup.js";
 
@@ -9,7 +9,7 @@ let server : Server;
 const bootstrap = async() => {
     try {
         startUnverifiedCleanup();
-        await seedSuperAdmin();
+        await seedAdmin();
         server = app.listen(envVars.PORT, () => {
             console.log(`Server is running on http://localhost:${envVars.PORT}`);
         });

@@ -1,27 +1,23 @@
-// src/config/multer.config.ts
-import multer from "multer";
+﻿import multer from "multer";
 
-// Use memory storage to get buffer for Cloudinary upload
 const storage = multer.memoryStorage();
 
-// File filter to allow only images
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fileFilter = (req: any, file: any, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|webp|gif/;
+const fileFilter = (_req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|webp|gif|avif|svg/;
   const extname = allowedTypes.test(file.originalname.toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const mimetype = allowedTypes.test(file.mimetype.toLowerCase());
 
-  if (extname && mimetype) {
+  if (extname || mimetype) {
     return cb(null, true);
-  } else {
-    cb(new Error("Only image files (jpeg, jpg, png, webp, gif) are allowed"));
   }
+  cb(new Error("Only image files (jpeg, jpg, png, webp, gif, avif, svg) are allowed"));
 };
 
 export const multerUpload = multer({
-  storage: storage,
+  storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB per image
   },
-  fileFilter: fileFilter,
+  fileFilter,
 });

@@ -71,14 +71,19 @@ const clearRefreshTokenCookie = (res: Response) => {
     });
 };
 
-const setBetterAuthSessionCookie = (res: Response, token: string) => {
-    CookieUtils.setCookie(res, "better-auth.session_token", token, {
+type BetterAuthSessionCookie = {
+    name: string;
+    value: string;
+    maxAge: number;
+};
+
+const setBetterAuthSessionCookie = (res: Response, cookie: BetterAuthSessionCookie) => {
+    CookieUtils.setCookie(res, cookie.name, cookie.value, {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax",
         path: '/',
-        //1 day
-        maxAge: 60 * 60 * 24 * 1000,
+        maxAge: cookie.maxAge * 1000,
     });
 }
 
@@ -91,6 +96,7 @@ const betterAuthSessionCookieOptions = {
 
 const clearBetterAuthSessionCookie = (res: Response) => {
     CookieUtils.clearCookie(res, "better-auth.session_token", betterAuthSessionCookieOptions);
+    CookieUtils.clearCookie(res, "__Secure-better-auth.session_token", betterAuthSessionCookieOptions);
 }
 
 

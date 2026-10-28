@@ -1,0 +1,51 @@
+model Product {
+  id              String        @id @default(uuid())
+  name            String
+  slug            String        @unique
+  sku             String        @unique
+  description     String?
+  brand           String?
+  price           Decimal       @db.Decimal(12, 2)
+  compareAtPrice  Decimal?      @db.Decimal(12, 2)
+  stock           Int           @default(0)
+  lowStockAt      Int           @default(5)
+  status          ProductStatus @default(DRAFT)
+  isWholesale     Boolean       @default(false)
+  minWholesaleQty Int           @default(1)
+  images          String[]
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cartItems       CartItem[]
+  variants        ProductVariant[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  wishlists       Wishlist[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([categoryId, status])
+  @@index([status, createdAt])
+  @@map("products")
+}
+
+model ProductVariant {
+  id              String   @id @default(uuid())
+  productId       String
+  name            String
+  sku             String   @unique
+  attributes      Json
+  price           Decimal  @db.Decimal(12, 2)
+  compareAtPrice  Decimal? @db.Decimal(12, 2)
+  stock           Int      @default(0)
+  lowStockAt      Int      @default(5)
+  isActive        Boolean  @default(true)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  inventory       InventoryTransaction[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([productId, isActive])
+  @@map("product_variants")
+}

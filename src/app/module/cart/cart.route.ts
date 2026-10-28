@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { Role } from "@prisma/client";
+import { checkAuth } from "../../middleware/checkAuth.js";
+import { validateRequest } from "../../middleware/validateRequest.js";
+import { CartController } from "./cart.controller.js";
+import { cartItemSchema } from "./cart.validation.js";
+const router = Router();
+router.use(checkAuth(Role.USER, Role.ADMIN));
+router.get("/", CartController.get); router.put("/items", validateRequest(cartItemSchema), CartController.upsert); router.delete("/items/:productId", CartController.remove); router.delete("/", CartController.clear);
+export { router as CartRoutes };

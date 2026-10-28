@@ -10,8 +10,7 @@ model Category {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // Medicines relationship (will be added later when Medicine model is ported)
-  // medicines   Medicine[]
+  products    Product[]
 
   @@map("categories")
 }
