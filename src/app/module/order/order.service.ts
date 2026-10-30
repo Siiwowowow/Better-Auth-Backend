@@ -8,7 +8,19 @@ import { paymentProvider } from "../payment/payment.provider.js";
 const orderNumber = () => `ANC-${Date.now().toString().slice(-6)}-${randomInt(100, 999)}`;
 
 const orderInclude = {
-  items: true,
+  items: {
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          images: true,
+          price: true,
+        },
+      },
+    },
+  },
   address: true,
   user: { select: { id: true, name: true, email: true, image: true } },
   payments: true,
@@ -38,64 +50,215 @@ const formatOrder = (order: any) => ({
     : [],
 });
 
-const create = async (userId: string, data: any) =>
+const create = async (actorUserId: string | undefined, data: any) =>
   prisma.$transaction(async (tx) => {
-    const address = await tx.address.findFirst({ where: { id: data.addressId, userId } });
-    if (!address) throw new AppError(status.BAD_REQUEST, "Valid delivery address is required");
+    // 1. Resolve Customer Identity (Guest or Logged In)
+    let customerUserId: string | null = actorUserId || null;
+    const customerName = (data.customerName || data.name || "").trim() || "Guest Customer";
+    const customerPhone = (data.phone || data.customerPhone || "").trim();
+    const customerEmail = (data.email || data.customerEmail || "").trim().toLowerCase();
 
-    const cart = await tx.cart.findUnique({
-      where: { userId },
-      include: { items: { include: { product: true } } },
-    });
-    if (!cart?.items.length) throw new AppError(status.BAD_REQUEST, "Cart is empty");
-
-    for (const item of cart.items) {
-      if (item.product.status !== "ACTIVE" || item.quantity > item.product.stock) {
-        throw new AppError(status.BAD_REQUEST, `Insufficient stock for ${item.product.name}`);
+    if (!customerUserId && (customerEmail || customerPhone)) {
+      // Find existing customer by email
+      if (customerEmail) {
+        const existing = await tx.user.findUnique({ where: { email: customerEmail } });
+        if (existing) {
+          customerUserId = existing.id;
+        }
+      }
+      // If still not found, create a customer user record so they can sign in later
+      if (!customerUserId) {
+        const tempEmail = customerEmail || `guest.${customerPhone.replace(/[^0-9]/g, "") || Date.now()}@ancorporation.local`;
+        const newUser = await tx.user.create({
+          data: {
+            id: randomUUID(),
+            email: tempEmail,
+            name: customerName,
+            role: "USER",
+            status: "ACTIVE",
+            emailVerified: true,
+          },
+        });
+        customerUserId = newUser.id;
       }
     }
 
-    const subtotal = cart.items.reduce(
-      (sum, item) => sum + Number(item.product.price) * item.quantity,
-      0
-    );
-    const activeZones = await tx.shippingZone.findMany({ where: { isActive: true } });
-    const matchedZone = activeZones.find((z) =>
-      z.cities.some((c) => c.toLowerCase() === (address.city || "").toLowerCase())
-    ) || activeZones[0];
-    const baseDeliveryFee = matchedZone ? Number(matchedZone.deliveryFee) : 100;
-    const deliveryFee = subtotal >= 5000 ? 0 : baseDeliveryFee;
+    // 2. Resolve Delivery Address
+    const addressLine = (data.addressLine || data.address || "").trim() || "Delivery Address";
+    const city = (data.city || "Dhaka").trim();
+    const area = (data.area || "").trim() || null;
+    const postalCode = (data.postalCode || "").trim() || null;
+
+    let addressId = data.addressId || null;
+    if (!addressId && customerUserId) {
+      const createdAddress = await tx.address.create({
+        data: {
+          userId: customerUserId,
+          label: "Delivery",
+          recipientName: customerName,
+          phone: customerPhone || "01000000000",
+          addressLine,
+          city,
+          area,
+          postalCode,
+          isDefault: true,
+        },
+      });
+      addressId = createdAddress.id;
+    }
+
+    // 3. Resolve Items
+    const rawItems = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
+    const resolvedItems: {
+      productId: string;
+      productName: string;
+      sku: string;
+      unitPrice: number;
+      quantity: number;
+    }[] = [];
+
+    if (rawItems.length > 0) {
+      for (const rawItem of rawItems) {
+        const qty = Math.max(1, Number(rawItem.quantity || 1));
+        let product = rawItem.productId
+          ? await tx.product.findFirst({
+              where: { OR: [{ id: rawItem.productId }, { sku: rawItem.productId }] },
+            })
+          : null;
+
+        if (!product && rawItem.sku) {
+          product = await tx.product.findFirst({ where: { sku: rawItem.sku } });
+        }
+        if (!product && (rawItem.productName || rawItem.name)) {
+          const pName = (rawItem.productName || rawItem.name).trim();
+          product = await tx.product.findFirst({
+            where: { name: { equals: pName, mode: "insensitive" } },
+          });
+        }
+
+        if (!product) {
+          let defaultCat = await tx.category.findFirst();
+          if (!defaultCat) {
+            defaultCat = await tx.category.create({
+              data: { name: "General", slug: "general", isActive: true },
+            });
+          }
+          const pName = (rawItem.productName || rawItem.name || "Electrical Item").trim();
+          const generatedSku = rawItem.sku?.trim() || `AN-${Date.now().toString().slice(-5)}-${randomInt(10, 99)}`;
+          product = await tx.product.create({
+            data: {
+              name: pName,
+              slug: `${pName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now().toString().slice(-4)}`,
+              sku: generatedSku,
+              price: Number(rawItem.unitPrice ?? rawItem.price ?? 0),
+              stock: Math.max(qty, 20),
+              status: "ACTIVE",
+              categoryId: defaultCat.id,
+              images: rawItem.image ? [rawItem.image] : [],
+            },
+          });
+        }
+
+        const unitPrice = Number(rawItem.unitPrice ?? rawItem.price ?? product.price ?? 0);
+        resolvedItems.push({
+          productId: product.id,
+          productName: rawItem.productName?.trim() || rawItem.name?.trim() || product.name,
+          sku: rawItem.sku?.trim() || product.sku,
+          unitPrice,
+          quantity: qty,
+        });
+
+        if (product.stock >= qty) {
+          await tx.product.update({
+            where: { id: product.id },
+            data: { stock: { decrement: qty } },
+          });
+        }
+      }
+    } else if (customerUserId) {
+      // Fallback to database cart if logged in
+      const dbCart = await tx.cart.findUnique({
+        where: { userId: customerUserId },
+        include: { items: { include: { product: true } } },
+      });
+      if (!dbCart?.items.length) {
+        throw new AppError(status.BAD_REQUEST, "No order items provided and cart is empty");
+      }
+      for (const item of dbCart.items) {
+        resolvedItems.push({
+          productId: item.productId,
+          productName: item.product.name,
+          sku: item.product.sku,
+          unitPrice: Number(item.product.price),
+          quantity: item.quantity,
+        });
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+      await tx.cartItem.deleteMany({ where: { cartId: dbCart.id } });
+    } else {
+      throw new AppError(status.BAD_REQUEST, "No order items provided");
+    }
+
+    // 4. Calculate Subtotal, Delivery Fee & Total
+    const subtotal = resolvedItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+    const deliveryFee =
+      data.deliveryFee !== undefined
+        ? Number(data.deliveryFee)
+        : city.toLowerCase().includes("dhaka")
+        ? 60
+        : 120;
+    const discountAmount = Number(data.discountAmount || 0);
+    const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+
     const orderNum = orderNumber();
+    const rawPayment = (data.paymentMethod || "CASH_ON_DELIVERY").toUpperCase();
+    const paymentMethod =
+      rawPayment === "DEMO" || rawPayment === "CARD" || rawPayment === "BKASH" || rawPayment === "NAGAD"
+        ? rawPayment === "DEMO" ? "DEMO" : "CASH_ON_DELIVERY"
+        : "CASH_ON_DELIVERY";
+
     const demoPayment =
-      data.paymentMethod === "DEMO"
-        ? await paymentProvider.charge({ orderId: orderNum, amount: subtotal + deliveryFee })
+      rawPayment === "DEMO"
+        ? await paymentProvider.charge({ orderId: orderNum, amount: total })
         : null;
 
+    // 5. Create Order
     const order = await tx.order.create({
       data: {
         orderNumber: orderNum,
-        userId,
-        addressId: address.id,
+        userId: customerUserId,
+        addressId: addressId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: customerEmail || null,
+        shippingAddress: addressLine,
+        city: city,
         subtotal,
         deliveryFee,
-        total: subtotal + deliveryFee,
-        paymentMethod: data.paymentMethod,
+        discountAmount,
+        total,
+        status: "PENDING",
+        paymentMethod: paymentMethod as any,
         paymentStatus: demoPayment?.status ?? "UNPAID",
-        note: data.note,
+        note: data.note || null,
         items: {
-          create: cart.items.map((item) => ({
-            productId: item.productId,
-            productName: item.product.name,
-            sku: item.product.sku,
-            unitPrice: item.product.price,
-            quantity: item.quantity,
-          })),
+          create: resolvedItems,
         },
         statusHistory: {
           create: {
             status: "PENDING",
-            note: "Order placed by customer",
-            changedBy: userId,
+            note: "Order placed successfully by customer",
+            changedBy: customerUserId || "CUSTOMER",
+          },
+        },
+        shipment: {
+          create: {
+            courier: city.toLowerCase().includes("dhaka") ? "Steadfast Courier" : "Pathao Express",
+            trackingNumber: `TRK-${Date.now().toString().slice(-6)}`,
+            status: "PENDING",
           },
         },
         payments: demoPayment
@@ -103,7 +266,7 @@ const create = async (userId: string, data: any) =>
               create: {
                 provider: demoPayment.provider,
                 transactionId: demoPayment.transactionId,
-                amount: subtotal + deliveryFee,
+                amount: total,
                 status: demoPayment.status,
                 metadata: demoPayment.metadata,
               },
@@ -113,13 +276,6 @@ const create = async (userId: string, data: any) =>
       include: orderInclude,
     });
 
-    for (const item of cart.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
-      });
-    }
-    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
     return formatOrder(order);
   });
 
@@ -245,6 +401,11 @@ const createAdminOrder = async (adminUserId: string, data: any) =>
         orderNumber: orderNum,
         userId: customer.id,
         addressId: address.id,
+        customerName: data.customerName.trim(),
+        customerPhone: data.phone.trim(),
+        customerEmail: email,
+        shippingAddress: data.addressLine.trim(),
+        city: data.city?.trim() || "Dhaka",
         subtotal,
         deliveryFee,
         discountAmount,
@@ -279,7 +440,7 @@ const createAdminOrder = async (adminUserId: string, data: any) =>
           ? {
               shipment: {
                 create: {
-                  courier: data.courier || "Pathao",
+                  courier: data.courier || "Steadfast Courier",
                   trackingNumber: data.trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
                   status:
                     orderStatus === "DELIVERED"
@@ -298,25 +459,136 @@ const createAdminOrder = async (adminUserId: string, data: any) =>
     return formatOrder(order);
   });
 
-const list = async (userId: string, isAdmin = false) => {
+const list = async (
+  userId?: string,
+  isAdmin = false,
+  userEmail?: string,
+  userPhone?: string
+) => {
+  let where: any = {};
+
+  if (!isAdmin) {
+    where.isDeletedByUser = false;
+    const orConditions: any[] = [];
+    if (userId) orConditions.push({ userId });
+    if (userEmail) orConditions.push({ customerEmail: { equals: userEmail, mode: "insensitive" } });
+    if (userPhone) orConditions.push({ customerPhone: userPhone });
+
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
+    } else if (userId) {
+      where.userId = userId;
+    }
+  }
+
   const orders = await prisma.order.findMany({
-    where: isAdmin ? {} : { userId },
+    where,
     include: orderInclude,
     orderBy: { createdAt: "desc" },
   });
   return orders.map(formatOrder);
 };
 
-const get = async (id: string, userId: string, isAdmin = false) => {
+const get = async (id: string, userId?: string, isAdmin = false) => {
+  const cleanId = id.trim().replace(/^#/, "");
   const order = await prisma.order.findFirst({
     where: {
-      OR: [{ id }, { orderNumber: id }],
-      ...(isAdmin ? {} : { userId }),
+      OR: [{ id: cleanId }, { orderNumber: cleanId }, { orderNumber: id }],
+      ...(isAdmin || !userId ? {} : { userId }),
     },
     include: orderInclude,
   });
   if (!order) throw new AppError(status.NOT_FOUND, "Order not found");
   return formatOrder(order);
+};
+
+const trackOrder = async (query: string) => {
+  const cleanQuery = query.trim().replace(/^#/, "");
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [
+        { orderNumber: { equals: cleanQuery, mode: "insensitive" } },
+        { orderNumber: { equals: query, mode: "insensitive" } },
+        { id: cleanQuery },
+        { shipment: { trackingNumber: { equals: cleanQuery, mode: "insensitive" } } },
+      ],
+    },
+    include: orderInclude,
+  });
+  if (!order) {
+    throw new AppError(status.NOT_FOUND, `Order "${query}" was not found.`);
+  }
+  return formatOrder(order);
+};
+
+const cancelOrder = async (
+  id: string,
+  actorUserId?: string,
+  reason?: string,
+  isAdmin = false
+) => {
+  const existing = await get(id, actorUserId, isAdmin);
+  const targetId = existing.id;
+
+  if (existing.status === "DELIVERED") {
+    throw new AppError(status.BAD_REQUEST, "Delivered orders cannot be cancelled.");
+  }
+  if (existing.status === "CANCELLED") {
+    return existing;
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    // 1. Update order status and cancellation reason
+    const cancelReason = reason || "Cancelled by customer";
+    const order = await tx.order.update({
+      where: { id: targetId },
+      data: {
+        status: "CANCELLED",
+        cancelReason,
+      },
+      include: orderInclude,
+    });
+
+    // 2. Add history
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId: targetId,
+        status: "CANCELLED",
+        note: cancelReason,
+        changedBy: actorUserId || "CUSTOMER",
+      },
+    });
+
+    // 3. Restock items
+    for (const item of existing.items || []) {
+      if (item.productId && item.quantity) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        }).catch(() => null);
+      }
+    }
+
+    // 4. Update shipment if exists
+    await tx.shipment.updateMany({
+      where: { orderId: targetId },
+      data: { status: "FAILED" },
+    }).catch(() => null);
+
+    return order;
+  });
+
+  return formatOrder(updated);
+};
+
+const userDeleteOrder = async (id: string, actorUserId?: string) => {
+  const existing = await get(id, actorUserId, true);
+  const updated = await prisma.order.update({
+    where: { id: existing.id },
+    data: { isDeletedByUser: true },
+    include: orderInclude,
+  });
+  return formatOrder(updated);
 };
 
 const updateStatus = async (id: string, data: any, actorId?: string) => {
@@ -329,6 +601,16 @@ const updateStatus = async (id: string, data: any, actorId?: string) => {
     if (data.paymentStatus !== undefined) orderUpdate.paymentStatus = data.paymentStatus;
     if (data.paymentMethod !== undefined) orderUpdate.paymentMethod = data.paymentMethod;
     if (data.note !== undefined) orderUpdate.note = data.note;
+    if (data.cancelReason !== undefined) orderUpdate.cancelReason = data.cancelReason;
+    if (data.customerName !== undefined) orderUpdate.customerName = data.customerName;
+    if (data.phone !== undefined) orderUpdate.customerPhone = data.phone;
+    if (data.addressLine !== undefined) orderUpdate.shippingAddress = data.addressLine;
+    if (data.city !== undefined) orderUpdate.city = data.city;
+
+    const isNowDelivered = data.status === "DELIVERED";
+    if (isNowDelivered) {
+      orderUpdate.paymentStatus = "PAID";
+    }
 
     if (Object.keys(orderUpdate).length > 0) {
       await tx.order.update({
@@ -342,13 +624,25 @@ const updateStatus = async (id: string, data: any, actorId?: string) => {
         data: {
           orderId: targetId,
           status: data.status,
-          note: data.note || `Status updated to ${data.status}`,
+          note: data.note || data.cancelReason || `Status updated to ${data.status}`,
           changedBy: actorId || null,
         },
       });
+
+      // If status changed to CANCELLED, restock items
+      if (data.status === "CANCELLED") {
+        for (const item of existing.items || []) {
+          if (item.productId && item.quantity) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            }).catch(() => null);
+          }
+        }
+      }
     }
 
-    if (data.customerName || data.phone || data.addressLine || data.city) {
+    if (existing.addressId && (data.customerName || data.phone || data.addressLine || data.city)) {
       await tx.address.update({
         where: { id: existing.addressId },
         data: {
@@ -357,17 +651,19 @@ const updateStatus = async (id: string, data: any, actorId?: string) => {
           ...(data.addressLine ? { addressLine: data.addressLine.trim() } : {}),
           ...(data.city ? { city: data.city.trim() } : {}),
         },
-      });
+      }).catch(() => null);
     }
 
     if (data.courier !== undefined || data.trackingNumber !== undefined || data.status) {
-      const shipmentStatus =
+      const shipmentStatus: any =
         data.status === "DELIVERED"
           ? "DELIVERED"
           : data.status === "SHIPPED"
           ? "SHIPPED"
           : data.status === "PROCESSING"
           ? "READY"
+          : data.status === "CANCELLED"
+          ? "FAILED"
           : "PENDING";
 
       await tx.shipment.upsert({
@@ -381,21 +677,21 @@ const updateStatus = async (id: string, data: any, actorId?: string) => {
         },
         create: {
           orderId: targetId,
-          courier: data.courier || "Standard Courier",
+          courier: data.courier || "Steadfast Courier",
           trackingNumber: data.trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
           status: shipmentStatus,
         },
       });
     }
 
-    if (data.paymentStatus === "PAID") {
+    if (data.paymentStatus === "PAID" || isNowDelivered) {
       const existingPayments = await tx.payment.count({ where: { orderId: targetId } });
       if (existingPayments === 0) {
         await tx.payment.create({
           data: {
             orderId: targetId,
             provider: "DEMO",
-            transactionId: `TXN-${Date.now()}-${randomInt(100, 999)}`,
+            transactionId: `TXN-DELIVERED-${Date.now().toString().slice(-6)}-${randomInt(100, 999)}`,
             amount: existing.total,
             status: "PAID",
           },
@@ -456,6 +752,9 @@ export const OrderService = {
   createAdminOrder,
   list,
   get,
+  trackOrder,
+  cancelOrder,
+  userDeleteOrder,
   updateStatus,
   bulkUpdateStatus,
   remove,

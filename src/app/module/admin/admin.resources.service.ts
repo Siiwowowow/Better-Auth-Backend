@@ -18,7 +18,7 @@ export interface ResourceField {
   key: string;
   label: string;
   value: string;
-  type?: "input" | "textarea" | "select" | "toggle" | "number";
+  type?: "input" | "textarea" | "select" | "toggle" | "number" | "image" | "color";
   options?: string[];
   required?: boolean;
 }
@@ -94,6 +94,7 @@ const getCategoriesResource = async (): Promise<ResourcePayload> => {
     position: String(idx + 1),
     created: formatDate(cat.createdAt),
     image: cat.image || "",
+    bgColor: cat.bgColor || "#E8F0F8",
   }));
 
   return {
@@ -127,7 +128,8 @@ const getCategoriesResource = async (): Promise<ResourcePayload> => {
       { key: "name", label: "Category Name", value: "", required: true },
       { key: "slug", label: "Slug", value: "" },
       { key: "description", label: "Description", value: "", type: "textarea" },
-      { key: "image", label: "Image URL", value: "" },
+      { key: "image", label: "Category Image", value: "", type: "image" },
+      { key: "bgColor", label: "Background Color", value: "#E8F0F8", type: "color" },
       { key: "status", label: "Status", value: "Active", type: "select", options: ["Active", "Inactive"] },
     ],
     showcase: categories.slice(0, 7).map((c, idx) => ({
@@ -1191,6 +1193,7 @@ const createResourceItem = async (resource: string, data: Record<string, any>, a
           slug,
           description: data.description || null,
           image: data.image || null,
+          bgColor: data.bgColor || "#E8F0F8",
           isActive,
         },
       });
@@ -1691,6 +1694,7 @@ const updateResourceItem = async (
           ...(data.slug ? { slug: slugify(String(data.slug)) } : {}),
           ...(data.description !== undefined ? { description: data.description } : {}),
           ...(data.image !== undefined ? { image: data.image || null } : {}),
+          ...(data.bgColor !== undefined ? { bgColor: data.bgColor || "#E8F0F8" } : {}),
           ...(isActive !== undefined ? { isActive } : {}),
         },
       });

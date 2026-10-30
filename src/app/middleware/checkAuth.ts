@@ -85,3 +85,57 @@ export const checkAuth =
       next(error);
     }
   };
+
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const sessionToken =
+      CookieUtils.getCookie(req, "better-auth.session_token") ||
+      CookieUtils.getCookie(req, "__Secure-better-auth.session_token");
+    const accessToken =
+      CookieUtils.getCookie(req, "accessToken") ||
+      req.headers.authorization?.replace(/^Bearer\s+/i, "");
+
+    let user: any = null;
+
+    if (sessionToken) {
+      try {
+        const session = await auth.api.getSession({
+          headers: new Headers({ cookie: req.headers.cookie ?? "" }),
+          query: { disableCookieCache: true },
+        });
+        if (session?.user) {
+          user = session.user;
+        }
+      } catch {
+        user = null;
+      }
+    }
+
+    if (!user && accessToken) {
+      const verified = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+      if (verified.success) {
+        user = verified.data;
+      }
+    }
+
+    if (
+      user &&
+      !user.isDeleted &&
+      user.status !== userStatus.BLOCKED &&
+      user.status !== userStatus.DELETED
+    ) {
+      req.user = {
+        userId: user.userId || user.id,
+        role: user.role,
+        email: user.email,
+        isDeleted: user.isDeleted ?? false,
+        emailVerified: user.emailVerified ?? false,
+        status: user.status,
+        image: user.image ?? null,
+      };
+    }
+    next();
+  } catch {
+    next();
+  }
+};

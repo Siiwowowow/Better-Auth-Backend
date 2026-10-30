@@ -66,7 +66,7 @@ export const uploadFileToCloudinary = async (
     const filePath = path.join(uploadsDir, savedFileName);
     fs.writeFileSync(filePath, buffer);
 
-    const baseUrl = `http://localhost:${envVars.PORT || 5000}`;
+    const baseUrl = process.env.BACKEND_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${envVars.PORT || 5000}`);
     const fileUrl = `${baseUrl}/uploads/${folder}/${savedFileName}`;
 
     return {

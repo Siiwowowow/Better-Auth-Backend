@@ -18,6 +18,7 @@ const formatCategory = (category: {
   slug: string;
   description: string | null;
   image: string | null;
+  bgColor?: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +29,7 @@ const formatCategory = (category: {
   slug: category.slug,
   description: category.description,
   image: category.image,
+  bgColor: category.bgColor ?? "#E8F0F8",
   isActive: category.isActive,
   productCount: category._count?.products ?? 0,
   createdAt: category.createdAt,
@@ -57,6 +59,7 @@ const createCategory = async (payload: ICreateCategoryPayload) => {
       slug,
       description: payload.description || null,
       image: payload.image || null,
+      bgColor: payload.bgColor || "#E8F0F8",
       isActive: payload.isActive ?? true,
     },
     include: {

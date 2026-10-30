@@ -6,6 +6,7 @@ model Category {
   slug        String    @unique
   description String?
   image       String?
+  bgColor     String?   @default("#E8F0F8")
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -6,6 +6,7 @@ export interface ICategory {
   slug: string;
   description?: string | null;
   image?: string | null;
+  bgColor?: string | null;
   isActive: boolean;
   productCount?: number;
   createdAt: Date;
@@ -17,6 +18,7 @@ export interface ICreateCategoryPayload {
   slug?: string;
   description?: string;
   image?: string;
+  bgColor?: string;
   isActive?: boolean;
 }
 
@@ -25,5 +27,6 @@ export interface IUpdateCategoryPayload {
   slug?: string;
   description?: string;
   image?: string;
+  bgColor?: string;
   isActive?: boolean;
 }

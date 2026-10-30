@@ -12,6 +12,12 @@ model Product {
   status          ProductStatus @default(DRAFT)
   isWholesale     Boolean       @default(false)
   minWholesaleQty Int           @default(1)
+  isFeatured      Boolean       @default(false)
+  isTrending      Boolean       @default(false)
+  showInHome      Boolean       @default(true)
+  showEveryday    Boolean       @default(false)
+  showInShop      Boolean       @default(true)
+  tags            String[]      @default([])
   images          String[]
   categoryId      String
   category        Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)

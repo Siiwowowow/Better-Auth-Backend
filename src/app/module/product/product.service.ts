@@ -101,6 +101,12 @@ const formatProduct = (product: any) => {
     compareAtPrice: compareAt,
     discountPrice: compareAt,
     isActive: product.status === "ACTIVE",
+    isFeatured: Boolean(product.isFeatured),
+    isTrending: Boolean(product.isTrending),
+    showInHome: product.showInHome !== false,
+    showEveryday: Boolean(product.showEveryday),
+    showInShop: product.showInShop !== false,
+    tags: Array.isArray(product.tags) ? product.tags : [],
     sold,
     variants: Array.isArray(product.variants)
       ? product.variants.map((v: any) => ({
@@ -108,6 +114,8 @@ const formatProduct = (product: any) => {
           price: Number(v.price),
           compareAtPrice: v.compareAtPrice != null ? Number(v.compareAtPrice) : null,
           color: v.attributes?.color ?? null,
+          colorHex: v.attributes?.colorHex ?? v.attributes?.color ?? null,
+          image: v.attributes?.image ?? null,
           size: v.attributes?.size ?? null,
         }))
       : [],
@@ -230,6 +238,12 @@ const create = async (data: any) => {
         status: resolveProductStatus(data, "ACTIVE"),
         isWholesale: Boolean(data.isWholesale),
         minWholesaleQty: Number(data.minWholesaleQty ?? 1),
+        isFeatured: Boolean(data.isFeatured),
+        isTrending: Boolean(data.isTrending),
+        showInHome: data.showInHome !== undefined ? Boolean(data.showInHome) : true,
+        showEveryday: Boolean(data.showEveryday),
+        showInShop: data.showInShop !== undefined ? Boolean(data.showInShop) : true,
+        tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
         images: Array.isArray(data.images) ? data.images.filter(Boolean) : [],
         categoryId,
       },
@@ -239,12 +253,19 @@ const create = async (data: any) => {
       const v = variantsInput[idx];
       if (!v?.name) continue;
       const variantSku = `${sku}-${(v.sku || v.name).toString().trim().toUpperCase().replace(/[^A-Z0-9-]+/g, "")}-${idx + 1}`;
+      const vAttrs = {
+        color: v.color || v.name,
+        colorHex: v.colorHex || v.color || "#ff5500",
+        image: v.image || (Array.isArray(data.images) && data.images[0]) || null,
+        size: v.size || null,
+        ...(typeof v.attributes === "object" ? v.attributes : {}),
+      };
       await tx.productVariant.create({
         data: {
           productId: product.id,
           name: String(v.name).trim(),
           sku: v.sku ? `${String(v.sku).trim()}-${product.id.slice(0, 4)}` : variantSku,
-          attributes: parseAttributes(v.attributes ?? { color: v.color || v.name }),
+          attributes: vAttrs,
           price: Number(v.price ?? data.price ?? 0),
           compareAtPrice: v.compareAtPrice != null ? Number(v.compareAtPrice) : null,
           stock: Number(v.stock ?? 0),
@@ -294,6 +315,12 @@ const update = async (id: string, data: any) => {
   if (data.status !== undefined || data.isActive !== undefined || data.specifications?.__status !== undefined) { updatePayload.status = resolveProductStatus(data, existing.status as any); }
   if (data.isWholesale !== undefined) updatePayload.isWholesale = Boolean(data.isWholesale);
   if (data.minWholesaleQty !== undefined) updatePayload.minWholesaleQty = Number(data.minWholesaleQty);
+  if (data.isFeatured !== undefined) updatePayload.isFeatured = Boolean(data.isFeatured);
+  if (data.isTrending !== undefined) updatePayload.isTrending = Boolean(data.isTrending);
+  if (data.showInHome !== undefined) updatePayload.showInHome = Boolean(data.showInHome);
+  if (data.showEveryday !== undefined) updatePayload.showEveryday = Boolean(data.showEveryday);
+  if (data.showInShop !== undefined) updatePayload.showInShop = Boolean(data.showInShop);
+  if (data.tags !== undefined) updatePayload.tags = Array.isArray(data.tags) ? data.tags.filter(Boolean) : [];
   if (data.images !== undefined) {
     updatePayload.images = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
   }
@@ -325,13 +352,20 @@ const update = async (id: string, data: any) => {
       for (let idx = 0; idx < data.variants.length; idx += 1) {
         const v = data.variants[idx];
         if (!v?.name) continue;
+        const vAttrs = {
+          color: v.color || v.name,
+          colorHex: v.colorHex || v.color || "#ff5500",
+          image: v.image || (Array.isArray(data.images) ? data.images[0] : existing.images?.[0]) || null,
+          size: v.size || null,
+          ...(typeof v.attributes === "object" ? v.attributes : {}),
+        };
         if (v.id && existing.variants.some((ev) => ev.id === v.id)) {
           await tx.productVariant.update({
             where: { id: v.id },
             data: {
               name: String(v.name).trim(),
               sku: String(v.sku || `${existing.sku}-V${idx + 1}`).trim(),
-              attributes: parseAttributes(v.attributes ?? { color: v.color || v.name }),
+              attributes: vAttrs,
               price: Number(v.price ?? existing.price),
               compareAtPrice: v.compareAtPrice != null ? Number(v.compareAtPrice) : null,
               stock: Number(v.stock ?? 0),
@@ -346,7 +380,7 @@ const update = async (id: string, data: any) => {
               productId: targetId,
               name: String(v.name).trim(),
               sku: uniqueVarSku,
-              attributes: parseAttributes(v.attributes ?? { color: v.color || v.name }),
+              attributes: vAttrs,
               price: Number(v.price ?? existing.price),
               compareAtPrice: v.compareAtPrice != null ? Number(v.compareAtPrice) : null,
               stock: Number(v.stock ?? 0),

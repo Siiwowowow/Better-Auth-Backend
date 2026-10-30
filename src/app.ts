@@ -22,7 +22,7 @@ app.set("view engine", "ejs");
 app.set("views",path.resolve(process.cwd(), `src/app/templates`) )
 // Enable CORS with credentials
 app.use(cors({
-    origin : [envVars.FRONTEND_URL, envVars.BETTER_AUTH_URL, "http://localhost:3000", "http://localhost:5000"],
+    origin : [envVars.FRONTEND_URL, envVars.BETTER_AUTH_URL, "http://localhost:3000", "http://localhost:5000", /\.vercel\.app$/],
     credentials : true,
     methods : ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders : ["Content-Type", "Authorization"]
@@ -46,6 +46,15 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // Middleware to parse JSON bodies
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+app.use(
+  "/uploads",
+  (_req, res, next) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    next();
+  },
+  express.static(path.resolve(process.cwd(), "uploads"))
+);
 app.use("/api/v1", IndexRoutes);
 
 app.use("/graphql", authRateLimit, (req, res, next) => {

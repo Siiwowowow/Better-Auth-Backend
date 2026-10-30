@@ -1,11 +1,11 @@
 import { prisma } from "./app/lib/prisma.js";
 
 async function main() {
-  const users = await prisma.user.findMany({
-    take: 5,
-    orderBy: { createdAt: "desc" },
+  const products = await prisma.product.findMany({
+    select: { id: true, name: true, images: true },
+    take: 10,
   });
-  console.log("LAST 5 USERS:", JSON.stringify(users, null, 2));
+  console.log("PRODUCTS IN DB:", JSON.stringify(products, null, 2));
 }
 
 main()

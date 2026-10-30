@@ -11,7 +11,7 @@ export const OrderController = {
       httpCode: status.CREATED,
       success: true,
       message: "Order placed successfully",
-      data: await OrderService.create(req.user!.userId, req.body),
+      data: await OrderService.create(req.user?.userId, req.body),
     })
   ),
   createAdmin: catchAsync(async (req: Request, res: Response) =>
@@ -27,7 +27,12 @@ export const OrderController = {
       httpCode: status.OK,
       success: true,
       message: "Orders fetched successfully",
-      data: await OrderService.list(req.user!.userId, req.user!.role === "ADMIN"),
+      data: await OrderService.list(
+        req.user?.userId,
+        req.user?.role === "ADMIN",
+        req.user?.email,
+        (req.query.phone as string) || undefined
+      ),
     })
   ),
   get: catchAsync(async (req: Request, res: Response) =>
@@ -37,8 +42,40 @@ export const OrderController = {
       message: "Order fetched successfully",
       data: await OrderService.get(
         req.params.id as string,
-        req.user!.userId,
-        req.user!.role === "ADMIN"
+        req.user?.userId,
+        req.user?.role === "ADMIN"
+      ),
+    })
+  ),
+  track: catchAsync(async (req: Request, res: Response) =>
+    sendResponse(res, {
+      httpCode: status.OK,
+      success: true,
+      message: "Order tracking fetched successfully",
+      data: await OrderService.trackOrder(req.params.orderNumber as string),
+    })
+  ),
+  cancel: catchAsync(async (req: Request, res: Response) =>
+    sendResponse(res, {
+      httpCode: status.OK,
+      success: true,
+      message: "Order cancelled successfully",
+      data: await OrderService.cancelOrder(
+        req.params.id as string,
+        req.user?.userId,
+        req.body?.reason,
+        req.user?.role === "ADMIN"
+      ),
+    })
+  ),
+  userDelete: catchAsync(async (req: Request, res: Response) =>
+    sendResponse(res, {
+      httpCode: status.OK,
+      success: true,
+      message: "Order removed from your list",
+      data: await OrderService.userDeleteOrder(
+        req.params.id as string,
+        req.user?.userId
       ),
     })
   ),
