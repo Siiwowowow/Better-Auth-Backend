@@ -6,6 +6,11 @@ async function main() {
     take: 10,
   });
   console.log("PRODUCTS IN DB:", JSON.stringify(products, null, 2));
+
+  const categories = await prisma.category.findMany({
+    select: { id: true, name: true, image: true },
+  });
+  console.log("CATEGORIES IN DB:", JSON.stringify(categories, null, 2));
 }
 
 main()

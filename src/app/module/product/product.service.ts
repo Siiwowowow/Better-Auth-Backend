@@ -97,6 +97,7 @@ const formatProduct = (product: any) => {
 
   return {
     ...product,
+    badge: product.badge || null,
     price: Number(product.price),
     compareAtPrice: compareAt,
     discountPrice: compareAt,
@@ -228,6 +229,7 @@ const create = async (data: any) => {
         sku,
         description: data.description ?? null,
         brand: data.brand ?? null,
+        badge: data.badge ? String(data.badge).trim() : null,
         price: Number(data.price),
         compareAtPrice:
           (data.compareAtPrice ?? data.discountPrice) !== undefined && (data.compareAtPrice ?? data.discountPrice) !== null && (data.compareAtPrice ?? data.discountPrice) !== ""
@@ -305,6 +307,7 @@ const update = async (id: string, data: any) => {
   }
   if (data.description !== undefined) updatePayload.description = data.description;
   if (data.brand !== undefined) updatePayload.brand = data.brand;
+  if (data.badge !== undefined) updatePayload.badge = data.badge ? String(data.badge).trim() : null;
   if (data.price !== undefined) updatePayload.price = Number(data.price);
   if (data.compareAtPrice !== undefined || data.discountPrice !== undefined) { const cmpVal = data.compareAtPrice !== undefined ? data.compareAtPrice : data.discountPrice;
     updatePayload.compareAtPrice =
